@@ -16,6 +16,28 @@ class StructureTile:
         self.block_path = block_path
 
 
+#   ______   .______          __   _______   ______ .___________.    _______.
+#  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
+# |  |  |  | |  |_)  |       |  | |  |__   |  ,----'`---|  |----`  |   (----`
+# |  |  |  | |   _  <  .--.  |  | |   __|  |  |         |  |        \   \
+# |  `--'  | |  |_)  | |  `--'  | |  |____ |  `----.    |  |    .----)   |
+#  \______/  |______/   \______/  |_______| \______|    |__|    |_______/
+
+class ObjActor:
+    def __init__(self, x, y, sprite):
+        self.x = x
+        self.y = y
+        self.sprite = sprite
+
+    def draw(self):
+        SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
+
+    def move(self, dx, dy):
+        if not GAME_MAP[self.x + dx][self.y + dy].block_path:
+            self.x += dx
+            self.y += dy
+
+
 # .___  ___.      ___      .______
 # |   \/   |     /   \     |   _  \
 # |  \  /  |    /  ^  \    |  |_)  |
@@ -52,7 +74,7 @@ def draw_game():
     draw_map(GAME_MAP)
 
     # draw the character
-    SURFACE_MAIN.blit(constants.S_PLAYER, (100, 100))
+    PLAYER.draw()
 
     # update the display
     pygame.display.flip()
@@ -85,10 +107,22 @@ def game_main_loop():
 
         # get player input
         events = pygame.event.get()
+
+        # process input
         for event in events:
+
             if event.type == pygame.QUIT:
                 game_quit = True
-        # process input
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    PLAYER.move(0, -1)
+                if event.key == pygame.K_DOWN:
+                    PLAYER.move(0, 1)
+                if event.key == pygame.K_LEFT:
+                    PLAYER.move(-1, 0)
+                if event.key == pygame.K_RIGHT:
+                    PLAYER.move(1, 0)
 
         # draw the game
         draw_game()
@@ -103,13 +137,15 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME_MAP
+    global SURFACE_MAIN, GAME_MAP, PLAYER
 
     # initialize pygame
     pygame.init()
     SURFACE_MAIN = pygame.display.set_mode((constants.GAME_WIDTH, constants.GAME_HEIGHT))
 
     GAME_MAP = map_create()
+
+    PLAYER = ObjActor(0, 0, constants.S_PLAYER)
 
 
 if __name__ == '__main__':
