@@ -9,8 +9,8 @@ CELL_WIDTH = 32
 CELL_HEIGHT = 32
 
 # Map Vars
-MAP_WIDTH = 30
-MAP_HEIGHT = 30
+MAP_WIDTH = 20
+MAP_HEIGHT = 20
 
 # Color definitions
 COLOR_BLACK = (0, 0, 0)

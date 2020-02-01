@@ -44,7 +44,22 @@ class ObjActor:
         SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
 
     def move(self, dx, dy):
-        if not GAME_MAP[self.x + dx][self.y + dy].block_path:
+
+        tile_is_wall = (GAME_MAP[self.x + dx][self.y + dy].block_path is True)
+
+        target = None
+        for obj in GAME_OBJECTS:
+            if (obj is not self
+                    and obj.x == self.x + dx
+                    and obj.y == self.y + dy
+                    and obj.creature):
+                target = obj
+                break
+
+        if target:
+            print(f'{self.creature.name_instance} attacks {target.creature.name_instance}')
+
+        if not tile_is_wall and target is None:
             self.x += dx
             self.y += dy
 
@@ -89,7 +104,7 @@ class AITest:
     """
 
     def take_turn(self):
-        self.owner.move(-1, 0)
+        self.owner.move(tcod.random_get_int(None, -1, 1), tcod.random_get_int(None, -1, 1))
 
 # .___  ___.      ___      .______
 # |   \/   |     /   \     |   _  \
@@ -104,6 +119,14 @@ def map_create():
 
     new_map[10][10].block_path = True
     new_map[10][15].block_path = True
+
+    for x in range(constants.MAP_WIDTH):
+        new_map[x][0].block_path = True
+        new_map[x][constants.MAP_HEIGHT - 1].block_path = True
+
+    for y in range(constants.MAP_HEIGHT):
+        new_map[0][y].block_path = True
+        new_map[constants.MAP_HEIGHT - 1][y].block_path = True
 
     return new_map
 
@@ -186,12 +209,15 @@ def game_initialize():
 
     # initialize pygame
     pygame.init()
-    SURFACE_MAIN = pygame.display.set_mode((constants.GAME_WIDTH, constants.GAME_HEIGHT))
+    SURFACE_MAIN = pygame.display.set_mode((
+            constants.MAP_WIDTH * constants.CELL_WIDTH,
+            constants.MAP_HEIGHT * constants.CELL_HEIGHT
+        ))
 
     GAME_MAP = map_create()
 
     creature_comp1 = ComponentCreature('greg')
-    PLAYER = ObjActor(0, 0, 'Python', constants.S_PLAYER, creature=creature_comp1)
+    PLAYER = ObjActor(1, 1, 'Python', constants.S_PLAYER, creature=creature_comp1)
 
     creature_comp2 = ComponentCreature('jack')
     ai_com = AITest()
