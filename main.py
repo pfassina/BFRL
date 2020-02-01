@@ -14,6 +14,7 @@ import constants
 class StructureTile:
     def __init__(self, block_path):
         self.block_path = block_path
+        self.explored = False
 
 
 #   ______   .______          __   _______   ______ .___________.    _______.
@@ -41,9 +42,9 @@ class ObjActor:
             ai.owner = self
 
     def draw(self):
-        SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
-
-
+        is_visible = FOV_MAP.fov[self.y, self.x]
+        if is_visible:
+            SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
 
 
 #   ______   ______   .___  ___. .______     ______   .__   __.  _______ .__   __. .___________.    _______.
@@ -88,6 +89,7 @@ class ComponentCreature:
         if self.hp <= 0:
             if self.death_function is not None:
                 self.death_function(self.owner)
+
 
 class ComponentItem:
     pass
@@ -147,6 +149,8 @@ def map_create():
         new_map[0][y].block_path = True
         new_map[constants.MAP_HEIGHT - 1][y].block_path = True
 
+    map_make_fov(new_map)
+
     return new_map
 
 
@@ -163,6 +167,30 @@ def map_check_for_creatures(x, y, exclude_object=None):
 
             if target:
                 return target
+
+
+def map_make_fov(incoming_map):
+
+    global FOV_MAP
+    FOV_MAP = tcod.map.Map(constants.MAP_WIDTH, constants.MAP_HEIGHT)
+
+    FOV_MAP.transparent[:] = True
+    FOV_MAP.walkable[:] = True
+    for y in range(constants.MAP_HEIGHT):
+        for x in range(constants.MAP_WIDTH):
+            if incoming_map[x][y].block_path:
+                FOV_MAP.transparent[y, x] = True
+                FOV_MAP.walkable[y, x] = True
+
+
+def map_calculate_fov():
+
+    global FOV_CALCULATE
+    if FOV_CALCULATE:
+        FOV_CALCULATE = False
+        FOV_MAP.compute_fov(PLAYER.x, PLAYER.y, constants.TORCH_RADIUS, constants.FOV_LIGHT_WALLS,
+                             constants.FOV_ALGORITHM)
+
 
 #  _______  .______          ___   ____    __    ____  __  .__   __.   _______
 # |       \ |   _  \        /   \  \   \  /  \  /   / |  | |  \ |  |  /  _____|
@@ -195,11 +223,21 @@ def draw_map(map_to_draw):
 
     for x in range(0, constants.MAP_WIDTH):
         for y in range(0, constants.MAP_HEIGHT):
-            if map_to_draw[x][y].block_path:
-                SURFACE_MAIN.blit(constants.S_WALL, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
-            else:
-                SURFACE_MAIN.blit(constants.S_FLOOR, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 
+            is_visible = FOV_MAP.fov[y, x]
+            if is_visible:
+
+                map_to_draw[x][y].explored = True
+                if map_to_draw[x][y].block_path:
+                    SURFACE_MAIN.blit(constants.S_WALL, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                else:
+                    SURFACE_MAIN.blit(constants.S_FLOOR, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+
+            elif map_to_draw[x][y].explored:
+                if map_to_draw[x][y].block_path:
+                    SURFACE_MAIN.blit(constants.S_WALL_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                else:
+                    SURFACE_MAIN.blit(constants.S_FLOOR_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 #   _______      ___      .___  ___.  _______
 #  /  _____|    /   \     |   \/   | |   ____|
 # |  |  __     /  ^  \    |  \  /  | |  |__
@@ -218,6 +256,8 @@ def game_main_loop():
 
         # Handle Player Input
         player_action = game_handle_keys()
+        map_calculate_fov()
+
         if player_action == 'QUIT':
             game_quit = True
 
@@ -239,7 +279,7 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY, GAME_OBJECTS
+    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY, GAME_OBJECTS, FOV_CALCULATE
 
     # initialize pygame
     pygame.init()
@@ -249,6 +289,7 @@ def game_initialize():
         ))
 
     GAME_MAP = map_create()
+    FOV_CALCULATE = True
 
     creature_comp1 = ComponentCreature('greg')
     PLAYER = ObjActor(1, 1, 'Python', constants.S_PLAYER, creature=creature_comp1)
@@ -262,6 +303,8 @@ def game_initialize():
 
 def game_handle_keys():
 
+    global FOV_CALCULATE
+
     # get player input
     events = pygame.event.get()
     for event in events:
@@ -270,15 +313,19 @@ def game_handle_keys():
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
                 PLAYER.creature.move(0, -1)
+                FOV_CALCULATE = True
                 return 'player-moved'
             if event.key == pygame.K_DOWN:
                 PLAYER.creature.move(0, 1)
+                FOV_CALCULATE = True
                 return 'player-moved'
             if event.key == pygame.K_LEFT:
                 PLAYER.creature.move(-1, 0)
+                FOV_CALCULATE = True
                 return 'player-moved'
             if event.key == pygame.K_RIGHT:
                 PLAYER.creature.move(1, 0)
+                FOV_CALCULATE = True
                 return 'player-moved'
     return 'no-action'
 
