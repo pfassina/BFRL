@@ -23,11 +23,16 @@ class StructureTile:
 # |  `--'  | |  |_)  | |  `--'  | |  |____ |  `----.    |  |    .----)   |
 #  \______/  |______/   \______/  |_______| \______|    |__|    |_______/
 
+
 class ObjActor:
-    def __init__(self, x, y, sprite):
+    def __init__(self, x, y, name_object, sprite, creature=None):
         self.x = x
         self.y = y
         self.sprite = sprite
+
+        if creature:
+            self.creature = creature
+            creature.owner = self
 
     def draw(self):
         SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
@@ -36,6 +41,32 @@ class ObjActor:
         if not GAME_MAP[self.x + dx][self.y + dy].block_path:
             self.x += dx
             self.y += dy
+
+
+#   ______   ______   .___  ___. .______     ______   .__   __.  _______ .__   __. .___________.    _______.
+#  /      | /  __  \  |   \/   | |   _  \   /  __  \  |  \ |  | |   ____||  \ |  | |           |   /       |
+# |  ,----'|  |  |  | |  \  /  | |  |_)  | |  |  |  | |   \|  | |  |__   |   \|  | `---|  |----`  |   (----`
+# |  |     |  |  |  | |  |\/|  | |   ___/  |  |  |  | |  . `  | |   __|  |  . `  |     |  |        \   \
+# |  `----.|  `--'  | |  |  |  | |  |      |  `--'  | |  |\   | |  |____ |  |\   |     |  |    .----)   |
+#  \______| \______/  |__|  |__| | _|       \______/  |__| \__| |_______||__| \__|     |__|    |_______/
+
+
+class ComponentCreature:
+    """
+    Creatures have health, can die, and can damage other objects by attacking them.
+    """
+
+    def __init__(self, name_instance, hp=10):
+        self.name_instance = name_instance
+        self.hp = hp
+
+
+class ComponentItem:
+    pass
+
+
+class ComponentContainer:
+    pass
 
 
 # .___  ___.      ___      .______
@@ -73,7 +104,8 @@ def draw_game():
     # draw the map
     draw_map(GAME_MAP)
 
-    # draw the character
+    # draw the characters
+    ENEMY.draw()
     PLAYER.draw()
 
     # update the display
@@ -137,7 +169,7 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME_MAP, PLAYER
+    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY
 
     # initialize pygame
     pygame.init()
@@ -145,7 +177,11 @@ def game_initialize():
 
     GAME_MAP = map_create()
 
-    PLAYER = ObjActor(0, 0, constants.S_PLAYER)
+    creature_comp1 = ComponentCreature('greg')
+    PLAYER = ObjActor(0, 0, 'Python', constants.S_PLAYER, creature=creature_comp1)
+
+    creature_comp2 = ComponentCreature('jack')
+    ENEMY = ObjActor(15, 15, 'Crab', constants.S_ENEMY, creature=creature_comp2)
 
 
 if __name__ == '__main__':
