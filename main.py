@@ -43,25 +43,7 @@ class ObjActor:
     def draw(self):
         SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
 
-    def move(self, dx, dy):
 
-        tile_is_wall = (GAME_MAP[self.x + dx][self.y + dy].block_path is True)
-
-        target = None
-        for obj in GAME_OBJECTS:
-            if (obj is not self
-                    and obj.x == self.x + dx
-                    and obj.y == self.y + dy
-                    and obj.creature):
-                target = obj
-                break
-
-        if target:
-            print(f'{self.creature.name_instance} attacks {target.creature.name_instance}')
-
-        if not tile_is_wall and target is None:
-            self.x += dx
-            self.y += dy
 
 
 #   ______   ______   .___  ___. .______     ______   .__   __.  _______ .__   __. .___________.    _______.
@@ -77,10 +59,35 @@ class ComponentCreature:
     Creatures have health, can die, and can damage other objects by attacking them.
     """
 
-    def __init__(self, name_instance, hp=10):
+    def __init__(self, name_instance, hp=10, death_function=None):
         self.name_instance = name_instance
+        self.max_hp = hp
         self.hp = hp
+        self.death_function = death_function
 
+    def move(self, dx, dy):
+
+        tile_is_wall = (GAME_MAP[self.owner.x + dx][self.owner.y + dy].block_path is True)
+
+        target = map_check_for_creatures(self.owner.x + dx, self.owner.y + dy, self.owner)
+        if target:
+            self.attack(target, 2)
+
+        if not tile_is_wall and target is None:
+            self.owner.x += dx
+            self.owner.y += dy
+
+    def attack(self, target, damage):
+        print(f'{self.name_instance} attacks {target.creature.name_instance} for {damage} damage!')
+        target.creature.take_damage(damage)
+
+    def take_damage(self, damage):
+        self.hp -= damage
+        print(f"{self.name_instance}'s health is {self.hp}/{self.max_hp}")
+
+        if self.hp <= 0:
+            if self.death_function is not None:
+                self.death_function(self.owner)
 
 class ComponentItem:
     pass
@@ -104,7 +111,19 @@ class AITest:
     """
 
     def take_turn(self):
-        self.owner.move(tcod.random_get_int(None, -1, 1), tcod.random_get_int(None, -1, 1))
+        self.owner.creature.move(tcod.random_get_int(None, -1, 1), tcod.random_get_int(None, -1, 1))
+
+
+def death_monster(monster):
+    """
+    On death, most monsters stop moving.
+    :param monster: Monster instance
+    """
+
+    print(f'{monster.creature.name_instance} is dead!')
+    monster.creature = None
+    monster.ai = None
+
 
 # .___  ___.      ___      .______
 # |   \/   |     /   \     |   _  \
@@ -129,6 +148,21 @@ def map_create():
         new_map[constants.MAP_HEIGHT - 1][y].block_path = True
 
     return new_map
+
+
+def map_check_for_creatures(x, y, exclude_object=None):
+
+    target = None
+    if exclude_object:
+        for obj in GAME_OBJECTS:
+            if (obj is not exclude_object
+                    and obj.x == x
+                    and obj.y == y
+                    and obj.creature):
+                target = obj
+
+            if target:
+                return target
 
 #  _______  .______          ___   ____    __    ____  __  .__   __.   _______
 # |       \ |   _  \        /   \  \   \  /  \  /   / |  | |  \ |  |  /  _____|
@@ -219,7 +253,7 @@ def game_initialize():
     creature_comp1 = ComponentCreature('greg')
     PLAYER = ObjActor(1, 1, 'Python', constants.S_PLAYER, creature=creature_comp1)
 
-    creature_comp2 = ComponentCreature('jack')
+    creature_comp2 = ComponentCreature('jack', death_function=death_monster)
     ai_com = AITest()
     ENEMY = ObjActor(15, 15, 'Crab', constants.S_ENEMY, creature=creature_comp2, ai=ai_com)
 
@@ -235,16 +269,16 @@ def game_handle_keys():
             return 'QUIT'
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
-                PLAYER.move(0, -1)
+                PLAYER.creature.move(0, -1)
                 return 'player-moved'
             if event.key == pygame.K_DOWN:
-                PLAYER.move(0, 1)
+                PLAYER.creature.move(0, 1)
                 return 'player-moved'
             if event.key == pygame.K_LEFT:
-                PLAYER.move(-1, 0)
+                PLAYER.creature.move(-1, 0)
                 return 'player-moved'
             if event.key == pygame.K_RIGHT:
-                PLAYER.move(1, 0)
+                PLAYER.creature.move(1, 0)
                 return 'player-moved'
     return 'no-action'
 
