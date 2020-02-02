@@ -174,11 +174,12 @@ def map_make_fov(incoming_map):
     global FOV_MAP
     FOV_MAP = tcod.map.Map(constants.MAP_WIDTH, constants.MAP_HEIGHT)
 
-    FOV_MAP.transparent[:] = True
-    FOV_MAP.walkable[:] = True
     for y in range(constants.MAP_HEIGHT):
         for x in range(constants.MAP_WIDTH):
             if incoming_map[x][y].block_path:
+                FOV_MAP.transparent[y, x] = False
+                FOV_MAP.walkable[y, x] = False
+            else:
                 FOV_MAP.transparent[y, x] = True
                 FOV_MAP.walkable[y, x] = True
 
@@ -215,6 +216,8 @@ def draw_game():
     for obj in GAME_OBJECTS:
         obj.draw()
 
+    draw_debug()
+
     # update the display
     pygame.display.flip()
 
@@ -238,6 +241,34 @@ def draw_map(map_to_draw):
                     SURFACE_MAIN.blit(constants.S_WALL_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
                 else:
                     SURFACE_MAIN.blit(constants.S_FLOOR_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+
+
+def draw_debug():
+    draw_text(SURFACE_MAIN, f'FPS: {int(CLOCK.get_fps())}', (0, 0), constants.COLOR_RED)
+
+
+def draw_text(display_surface, text_to_display, coordinates, text_color):
+    """
+    This function takes in some text, and display it on the referenced surfaced
+    :param display_surface: Surface to display text
+    :param text_to_display: Text to be displayed
+    :param coordinates: Coordinates tuple
+    :param text_color: Text color
+    """
+
+    text_surface, text_rectangle = helper_text_objects(text_to_display, text_color)
+    text_rectangle.topleft = coordinates
+    display_surface.blit(text_surface, text_rectangle)
+
+
+# HELPERS
+
+
+def helper_text_objects(incoming_text, incoming_color):
+    text_surface = constants.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color)
+    return text_surface, text_surface.get_rect()
+
+
 #   _______      ___      .___  ___.  _______
 #  /  _____|    /   \     |   \/   | |   ____|
 # |  |  __     /  ^  \    |  \  /  | |  |__
@@ -269,6 +300,8 @@ def game_main_loop():
         # draw the game
         draw_game()
 
+        CLOCK.tick(constants.GAME_FPS)
+
     # quit the game
     pygame.quit()
     exit()
@@ -279,10 +312,12 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY, GAME_OBJECTS, FOV_CALCULATE
+    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY, GAME_OBJECTS, FOV_CALCULATE, CLOCK
 
     # initialize pygame
     pygame.init()
+    CLOCK = pygame.time.Clock()
+
     SURFACE_MAIN = pygame.display.set_mode((
             constants.MAP_WIDTH * constants.CELL_WIDTH,
             constants.MAP_HEIGHT * constants.CELL_HEIGHT
