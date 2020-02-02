@@ -33,8 +33,12 @@ S_WALL_EXPLORED = pygame.image.load('data/wall_explored.png')
 S_FLOOR = pygame.image.load('data/floor.png')
 S_FLOOR_EXPLORED = pygame.image.load('data/floor_explored.png')
 
-# FONTS
-FONT_DEBUG_MESSAGE = pygame.font.Font('data/joystix.ttf', 20)
+# Fonts
+FONT_DEBUG_MESSAGE = pygame.font.Font('data/joystix.ttf', 16)
+FONT_MESSAGE_TEXT = pygame.font.Font('data/joystix.ttf', 12)
+
+# Message Defaults
+NUM_MESSAGES = 4
 
 # FOV Settings
 TORCH_RADIUS = 10

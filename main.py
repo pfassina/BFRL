@@ -79,12 +79,14 @@ class ComponentCreature:
             self.owner.y += dy
 
     def attack(self, target, damage):
-        print(f'{self.name_instance} attacks {target.creature.name_instance} for {damage} damage!')
+        message = f'{self.name_instance} attacks {target.creature.name_instance} for {damage} damage!'
+        game_message(message, constants.COLOR_RED)
         target.creature.take_damage(damage)
 
     def take_damage(self, damage):
         self.hp -= damage
-        print(f"{self.name_instance}'s health is {self.hp}/{self.max_hp}")
+        message = f"{self.name_instance}'s health is {self.hp}/{self.max_hp}"
+        game_message(message, constants.COLOR_WHITE)
 
         if self.hp <= 0:
             if self.death_function is not None:
@@ -122,7 +124,8 @@ def death_monster(monster):
     :param monster: Monster instance
     """
 
-    print(f'{monster.creature.name_instance} is dead!')
+    message = f'{monster.creature.name_instance} is dead!'
+    game_message(message, constants.COLOR_GREY)
     monster.creature = None
     monster.ai = None
 
@@ -217,6 +220,7 @@ def draw_game():
         obj.draw()
 
     draw_debug()
+    draw_messages()
 
     # update the display
     pygame.display.flip()
@@ -244,19 +248,35 @@ def draw_map(map_to_draw):
 
 
 def draw_debug():
-    draw_text(SURFACE_MAIN, f'FPS: {int(CLOCK.get_fps())}', (0, 0), constants.COLOR_RED)
+    draw_text(SURFACE_MAIN, f'FPS: {int(CLOCK.get_fps())}', (0, 0), constants.COLOR_WHITE, constants.COLOR_BLACK)
 
 
-def draw_text(display_surface, text_to_display, coordinates, text_color):
+def draw_messages():
+
+    if len(GAME_MESSAGES) <= constants.NUM_MESSAGES:
+        to_draw = GAME_MESSAGES
+    else:
+        to_draw = GAME_MESSAGES[-constants.NUM_MESSAGES:]
+
+    text_height = helper_text_height(constants.FONT_MESSAGE_TEXT)
+
+    start_y = constants.MAP_HEIGHT * constants.CELL_HEIGHT - (constants.NUM_MESSAGES * text_height) - 10
+
+    for index, (message, color) in enumerate(to_draw):
+        draw_text(SURFACE_MAIN, message, (0, start_y + index * text_height), color, constants.COLOR_BLACK)
+
+
+def draw_text(display_surface, text_to_display, coordinates, text_color, back_color=None):
     """
     This function takes in some text, and display it on the referenced surfaced
     :param display_surface: Surface to display text
     :param text_to_display: Text to be displayed
     :param coordinates: Coordinates tuple
     :param text_color: Text color
+    :param back_color: Text background color
     """
 
-    text_surface, text_rectangle = helper_text_objects(text_to_display, text_color)
+    text_surface, text_rectangle = helper_text_objects(text_to_display, text_color, back_color)
     text_rectangle.topleft = coordinates
     display_surface.blit(text_surface, text_rectangle)
 
@@ -264,9 +284,27 @@ def draw_text(display_surface, text_to_display, coordinates, text_color):
 # HELPERS
 
 
-def helper_text_objects(incoming_text, incoming_color):
-    text_surface = constants.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color)
+def helper_text_objects(incoming_text, incoming_color, incoming_background):
+
+    if incoming_background:
+        text_surface = constants.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color, incoming_background)
+    else:
+        text_surface = constants.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color)
+
     return text_surface, text_surface.get_rect()
+
+
+def helper_text_height(font):
+    """
+    Return the Height of a font in pixels
+    :param font: font to be examined
+    :return: font height in pixels
+    """
+
+    font_object = font.render('a', False, (0, 0, 0))
+    font_rect = font_object.get_rect()
+
+    return font_rect.height
 
 
 #   _______      ___      .___  ___.  _______
@@ -312,7 +350,7 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY, GAME_OBJECTS, FOV_CALCULATE, CLOCK
+    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY, GAME_OBJECTS, FOV_CALCULATE, CLOCK, GAME_MESSAGES
 
     # initialize pygame
     pygame.init()
@@ -324,6 +362,9 @@ def game_initialize():
         ))
 
     GAME_MAP = map_create()
+
+    GAME_MESSAGES = []
+
     FOV_CALCULATE = True
 
     creature_comp1 = ComponentCreature('greg')
@@ -363,6 +404,10 @@ def game_handle_keys():
                 FOV_CALCULATE = True
                 return 'player-moved'
     return 'no-action'
+
+
+def game_message(message, color):
+    GAME_MESSAGES.append((message, color))
 
 
 if __name__ == '__main__':
