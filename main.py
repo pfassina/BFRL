@@ -47,6 +47,15 @@ class ObjActor:
             SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
 
 
+class ObjectGame:
+    def __init__(self):
+        
+        self.current_map = map_create()
+        self.current_objects = []
+        
+        self.message_history = []
+        
+        
 #   ______   ______   .___  ___. .______     ______   .__   __.  _______ .__   __. .___________.    _______.
 #  /      | /  __  \  |   \/   | |   _  \   /  __  \  |  \ |  | |   ____||  \ |  | |           |   /       |
 # |  ,----'|  |  |  | |  \  /  | |  |_)  | |  |  |  | |   \|  | |  |__   |   \|  | `---|  |----`  |   (----`
@@ -68,7 +77,7 @@ class ComponentCreature:
 
     def move(self, dx, dy):
 
-        tile_is_wall = (GAME_MAP[self.owner.x + dx][self.owner.y + dy].block_path is True)
+        tile_is_wall = (GAME.current_map[self.owner.x + dx][self.owner.y + dy].block_path is True)
 
         target = map_check_for_creatures(self.owner.x + dx, self.owner.y + dy, self.owner)
         if target:
@@ -161,7 +170,7 @@ def map_check_for_creatures(x, y, exclude_object=None):
 
     target = None
     if exclude_object:
-        for obj in GAME_OBJECTS:
+        for obj in GAME.current_objects:
             if (obj is not exclude_object
                     and obj.x == x
                     and obj.y == y
@@ -193,7 +202,7 @@ def map_calculate_fov():
     if FOV_CALCULATE:
         FOV_CALCULATE = False
         FOV_MAP.compute_fov(PLAYER.x, PLAYER.y, constants.TORCH_RADIUS, constants.FOV_LIGHT_WALLS,
-                             constants.FOV_ALGORITHM)
+                            constants.FOV_ALGORITHM)
 
 
 #  _______  .______          ___   ____    __    ____  __  .__   __.   _______
@@ -213,10 +222,10 @@ def draw_game():
     SURFACE_MAIN.fill(constants.COLOR_DEFAULT_BG)
 
     # draw the map
-    draw_map(GAME_MAP)
+    draw_map(GAME.current_map)
 
     # draw the characters
-    for obj in GAME_OBJECTS:
+    for obj in GAME.current_objects:
         obj.draw()
 
     draw_debug()
@@ -253,10 +262,10 @@ def draw_debug():
 
 def draw_messages():
 
-    if len(GAME_MESSAGES) <= constants.NUM_MESSAGES:
-        to_draw = GAME_MESSAGES
+    if len(GAME.message_history) <= constants.NUM_MESSAGES:
+        to_draw = GAME.message_history
     else:
-        to_draw = GAME_MESSAGES[-constants.NUM_MESSAGES:]
+        to_draw = GAME.message_history[-constants.NUM_MESSAGES:]
 
     text_height = helper_text_height(constants.FONT_MESSAGE_TEXT)
 
@@ -281,7 +290,12 @@ def draw_text(display_surface, text_to_display, coordinates, text_color, back_co
     display_surface.blit(text_surface, text_rectangle)
 
 
-# HELPERS
+#  __    __   _______  __      .______    _______ .______          _______.
+# |  |  |  | |   ____||  |     |   _  \  |   ____||   _  \        /       |
+# |  |__|  | |  |__   |  |     |  |_)  | |  |__   |  |_)  |      |   (----`
+# |   __   | |   __|  |  |     |   ___/  |   __|  |      /        \   \    
+# |  |  |  | |  |____ |  `----.|  |      |  |____ |  |\  \----.----)   |   
+# |__|  |__| |_______||_______|| _|      |_______|| _| `._____|_______/    
 
 
 def helper_text_objects(incoming_text, incoming_color, incoming_background):
@@ -331,7 +345,7 @@ def game_main_loop():
             game_quit = True
 
         elif player_action != 'no-action':
-            for obj in GAME_OBJECTS:
+            for obj in GAME.current_objects:
                 if obj.ai:
                     obj.ai.take_turn()
 
@@ -350,20 +364,19 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME_MAP, PLAYER, ENEMY, GAME_OBJECTS, FOV_CALCULATE, CLOCK, GAME_MESSAGES
+    global SURFACE_MAIN, GAME, CLOCK, FOV_CALCULATE, PLAYER, ENEMY
 
     # initialize pygame
     pygame.init()
-    CLOCK = pygame.time.Clock()
 
     SURFACE_MAIN = pygame.display.set_mode((
             constants.MAP_WIDTH * constants.CELL_WIDTH,
             constants.MAP_HEIGHT * constants.CELL_HEIGHT
         ))
 
-    GAME_MAP = map_create()
+    GAME = ObjectGame()
 
-    GAME_MESSAGES = []
+    CLOCK = pygame.time.Clock()
 
     FOV_CALCULATE = True
 
@@ -374,7 +387,7 @@ def game_initialize():
     ai_com = AITest()
     ENEMY = ObjActor(15, 15, 'Crab', constants.S_ENEMY, creature=creature_comp2, ai=ai_com)
 
-    GAME_OBJECTS = [PLAYER, ENEMY]
+    GAME.current_objects = [PLAYER, ENEMY]
 
 
 def game_handle_keys():
@@ -407,7 +420,7 @@ def game_handle_keys():
 
 
 def game_message(message, color):
-    GAME_MESSAGES.append((message, color))
+    GAME.message_history.append((message, color))
 
 
 if __name__ == '__main__':
