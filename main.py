@@ -49,7 +49,7 @@ class StructureAssets:
 
 
 class ObjActor:
-    def __init__(self, x, y, name_object, animation, animation_speed=0.5, creature=None, ai=None):
+    def __init__(self, x, y, name_object, animation, animation_speed=0.5, creature=None, ai=None, container=None, item=None):
         self.x = x
         self.y = y
         self.animation = animation
@@ -61,14 +61,20 @@ class ObjActor:
         self.sprite_image = 0
 
         self.creature = creature
-        if creature:
-            self.creature = creature
-            creature.owner = self
+        if self.creature:
+            self.creature.owner = self
 
         self.ai = ai
-        if ai:
-            self.ai = ai
-            ai.owner = self
+        if self.ai:
+            self.ai.owner = self
+
+        self.container = container
+        if self.container:
+            self.container.owner = self
+
+        self.item = item
+        if self.item:
+            self.item.owner = self
 
     def draw(self):
         is_visible = FOV_MAP.fov[self.y, self.x]
@@ -215,13 +221,42 @@ class ComponentCreature:
                 self.death_function(self.owner)
 
 
-class ComponentItem:
-    pass
-
-
 class ComponentContainer:
-    pass
+    def __init__(self, volume=10.0, inventory=[]):
+        self.max_volume = volume
+        self.inventory = inventory
 
+    # get names of everything in inventory
+    # get volume within container
+    @property
+    def volume(self):
+        return 0.0
+    # get the weight of everything within container
+
+
+class ComponentItem:
+    def __init__(self, weight=0.0, volume=0.0):
+        self.weight = weight
+        self.volume = volume
+
+    def pick_up(self, actor):
+        if actor.container:
+            if actor.container.volume + self.volume > actor.container.max_volume:
+                game_message('Not enough room to pick up', color=constants.COLOR_RED)
+            else:
+                game_message('Picking up')
+                actor.container.inventory.append(self.owner)
+                GAME.current_objects.remove(self.owner)
+                self.container = actor.container
+
+    def drop(self, new_x, new_y):
+        GAME.current_objects.append(self.owner)
+        self.container.inventory.remove(self.owner)
+        self.owner.x = new_x
+        self.owner.y = new_y
+        game_message('Item dropped!')
+
+    # use this item
 
 #      ___       __
 #     /   \     |  |
@@ -316,6 +351,12 @@ def map_calculate_fov():
         FOV_CALCULATE = False
         FOV_MAP.compute_fov(PLAYER.x, PLAYER.y, constants.TORCH_RADIUS, constants.FOV_LIGHT_WALLS,
                             constants.FOV_ALGORITHM)
+
+
+def map_objects_at_coordinates(x, y):
+
+    object_options = [obj for obj in GAME.current_objects if obj.x == x and obj.y == y]
+    return object_options
 
 
 #  _______  .______          ___   ____    __    ____  __  .__   __.   _______
@@ -495,12 +536,14 @@ def game_initialize():
     
     ASSETS = StructureAssets()
 
+    container_com1 = ComponentContainer()
     creature_comp1 = ComponentCreature('greg')
-    PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_comp1)
+    PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_comp1, container=container_com1)
 
+    item_com1 = ComponentItem()
     creature_comp2 = ComponentCreature('jack', death_function=death_monster)
     ai_com = AITest()
-    ENEMY = ObjActor(15, 15, 'Crab', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com)
+    ENEMY = ObjActor(15, 15, 'Crab', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com, item=item_com1)
 
     GAME.current_objects = [PLAYER, ENEMY]
 
@@ -531,10 +574,19 @@ def game_handle_keys():
                 PLAYER.creature.move(1, 0)
                 FOV_CALCULATE = True
                 return 'player-moved'
+            if event.key == pygame.K_g:
+                objects_at_player = map_objects_at_coordinates(PLAYER.x, PLAYER.y)
+                for obj in objects_at_player:
+                    if obj.item:
+                        obj.item.pick_up(PLAYER)
+            if event.key == pygame.K_d:
+                if len(PLAYER.container.inventory) > 0:
+                    PLAYER.container.inventory[-1].item.drop(PLAYER.x, PLAYER.y)
+
     return 'no-action'
 
 
-def game_message(message, color):
+def game_message(message, color=constants.COLOR_GREY):
     GAME.message_history.append((message, color))
 
 

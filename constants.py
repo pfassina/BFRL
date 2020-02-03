@@ -1,7 +1,6 @@
-import pygame
+
 import tcod
 
-pygame.init()
 
 # Game Sizes
 GAME_WIDTH = 800
