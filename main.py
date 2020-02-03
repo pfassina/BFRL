@@ -598,7 +598,7 @@ def menu_pause():
     text_height = helper_text_height(menu_font)
     text_width = helper_text_width(menu_font) * len(menu_text)
 
-    text_location = (window_width/2 - text_width/2, window_height/2 - text_height/2)
+    text_location = (int(window_width/2 - text_width/2), int(window_height/2 - text_height/2))
 
     while not menu_close:
         events_list = pygame.event.get()
@@ -622,8 +622,8 @@ def menu_inventory():
     window_width = constants.MAP_WIDTH * constants.CELL_WIDTH
     window_height = constants.MAP_HEIGHT * constants.CELL_HEIGHT
 
-    menu_x = window_width/2 - menu_width/2
-    menu_y = window_height/2 - menu_height/2
+    menu_x = int(window_width/2 - menu_width/2)
+    menu_y = int(window_height/2 - menu_height/2)
 
     menu_location = (menu_x, menu_y)
 
@@ -643,7 +643,6 @@ def menu_inventory():
         # Get list of input events
         events_list = pygame.event.get()
 
-
         # Get mouse coordinates relative to inventory window
         mouse_x, mouse_y = pygame.mouse.get_pos()
         mouse_x_relative = mouse_x - menu_x
@@ -659,10 +658,9 @@ def menu_inventory():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_i:
                     menu_close = True
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    # print(pygame.mouse.get_pressed())
-                    if event.button == 1 and mouse_in_window and mouse_line_selection <= len(item_list):
-                        print(mouse_line_selection)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1 and mouse_in_window and mouse_line_selection <= len(item_list):
+                    print(mouse_line_selection)
 
         # Draw item list
         for line, name in enumerate(item_list):
