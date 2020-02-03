@@ -25,17 +25,6 @@ COLOR_RED = (255, 0, 0)
 # Game colors
 COLOR_DEFAULT_BG = COLOR_GREY
 
-# Sprites
-S_WALL = pygame.image.load('data/wall.jpg')
-S_WALL_EXPLORED = pygame.image.load('data/wall_explored.png')
-
-S_FLOOR = pygame.image.load('data/floor.png')
-S_FLOOR_EXPLORED = pygame.image.load('data/floor_explored.png')
-
-# Fonts
-FONT_DEBUG_MESSAGE = pygame.font.Font('data/joystix.ttf', 16)
-FONT_MESSAGE_TEXT = pygame.font.Font('data/joystix.ttf', 12)
-
 # Message Defaults
 NUM_MESSAGES = 4
 

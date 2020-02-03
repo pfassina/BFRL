@@ -17,6 +17,29 @@ class StructureTile:
         self.explored = False
 
 
+class StructureAssets:
+    def __init__(self):
+        
+        # Sprite Sheets
+        char_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
+        enemies_sprite_sheet = ObjectSpriteSheet('data/aquatic_creatures.png')
+        
+        # Animations
+        self.A_PLAYER = char_sprite_sheet.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
+        self.A_ENEMY = enemies_sprite_sheet.get_animation('k', 1, width=16, height=16, num_sprites=2, scale=(32, 32))
+
+        # Sprites
+        self.S_WALL = pygame.image.load('data/wall.jpg')
+        self.S_WALL_EXPLORED = pygame.image.load('data/wall_explored.png')
+
+        self.S_FLOOR = pygame.image.load('data/floor.png')
+        self.S_FLOOR_EXPLORED = pygame.image.load('data/floor_explored.png')
+
+        # Fonts
+        self.FONT_DEBUG_MESSAGE = pygame.font.Font('data/joystix.ttf', 16)
+        self.FONT_MESSAGE_TEXT = pygame.font.Font('data/joystix.ttf', 12)
+
+
 #   ______   .______          __   _______   ______ .___________.    _______.
 #  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
 # |  |  |  | |  |_)  |       |  | |  |__   |  ,----'`---|  |----`  |   (----`
@@ -120,6 +143,7 @@ class ObjectSpriteSheet:
         :param row:
         :param width:
         :param height:
+        :param num_sprites: number of sprites on an animation
         :param scale: X, Y tuple with scale parameters
         :return: list of sprites to be animated
         """
@@ -334,15 +358,15 @@ def draw_map(map_to_draw):
 
                 map_to_draw[x][y].explored = True
                 if map_to_draw[x][y].block_path:
-                    SURFACE_MAIN.blit(constants.S_WALL, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAIN.blit(ASSETS.S_WALL, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
                 else:
-                    SURFACE_MAIN.blit(constants.S_FLOOR, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAIN.blit(ASSETS.S_FLOOR, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 
             elif map_to_draw[x][y].explored:
                 if map_to_draw[x][y].block_path:
-                    SURFACE_MAIN.blit(constants.S_WALL_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAIN.blit(ASSETS.S_WALL_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
                 else:
-                    SURFACE_MAIN.blit(constants.S_FLOOR_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAIN.blit(ASSETS.S_FLOOR_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 
 
 def draw_debug():
@@ -356,7 +380,7 @@ def draw_messages():
     else:
         to_draw = GAME.message_history[-constants.NUM_MESSAGES:]
 
-    text_height = helper_text_height(constants.FONT_MESSAGE_TEXT)
+    text_height = helper_text_height(ASSETS.FONT_MESSAGE_TEXT)
 
     start_y = constants.MAP_HEIGHT * constants.CELL_HEIGHT - (constants.NUM_MESSAGES * text_height) - 10
 
@@ -390,9 +414,9 @@ def draw_text(display_surface, text_to_display, coordinates, text_color, back_co
 def helper_text_objects(incoming_text, incoming_color, incoming_background):
 
     if incoming_background:
-        text_surface = constants.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color, incoming_background)
+        text_surface = ASSETS.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color, incoming_background)
     else:
-        text_surface = constants.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color)
+        text_surface = ASSETS.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color)
 
     return text_surface, text_surface.get_rect()
 
@@ -453,7 +477,7 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME, CLOCK, FOV_CALCULATE, PLAYER, ENEMY
+    global SURFACE_MAIN, GAME, CLOCK, FOV_CALCULATE, PLAYER, ENEMY, ASSETS
 
     # initialize pygame
     pygame.init()
@@ -468,20 +492,15 @@ def game_initialize():
     CLOCK = pygame.time.Clock()
 
     FOV_CALCULATE = True
-
-    # TEMP SPRITES
-
-    char_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
-    enemies_sprite_sheet = ObjectSpriteSheet('data/aquatic_creatures.png')
-    A_PLAYER = char_sprite_sheet.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
-    A_ENEMY = enemies_sprite_sheet.get_animation('k', 1, width=16, height=16, num_sprites=2, scale=(32, 32))
+    
+    ASSETS = StructureAssets()
 
     creature_comp1 = ComponentCreature('greg')
-    PLAYER = ObjActor(1, 1, 'Python', A_PLAYER, animation_speed=1, creature=creature_comp1)
+    PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_comp1)
 
     creature_comp2 = ComponentCreature('jack', death_function=death_monster)
     ai_com = AITest()
-    ENEMY = ObjActor(15, 15, 'Crab', A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com)
+    ENEMY = ObjActor(15, 15, 'Crab', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com)
 
     GAME.current_objects = [PLAYER, ENEMY]
 
