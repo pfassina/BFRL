@@ -26,10 +26,16 @@ class StructureTile:
 
 
 class ObjActor:
-    def __init__(self, x, y, name_object, sprite, creature=None, ai=None):
+    def __init__(self, x, y, name_object, animation, animation_speed=0.5, creature=None, ai=None):
         self.x = x
         self.y = y
-        self.sprite = sprite
+        self.animation = animation
+        self.animation_speed = animation_speed / 1.0
+
+        # animation flicker speed
+        self.flicker_speed = self.animation_speed / len(self.animation)
+        self.flicker_timer = 0.0
+        self.sprite_image = 0
 
         self.creature = creature
         if creature:
@@ -44,7 +50,18 @@ class ObjActor:
     def draw(self):
         is_visible = FOV_MAP.fov[self.y, self.x]
         if is_visible:
-            SURFACE_MAIN.blit(self.sprite, (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
+            if len(self.animation) == 1:
+                SURFACE_MAIN.blit(self.animation[0], (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
+            elif len(self.animation) > 1:
+                if CLOCK.get_fps() > 0.0:
+                    self.flicker_timer += 1 / CLOCK.get_fps()
+                if self.flicker_timer >= self.flicker_speed:
+                    self.flicker_timer = 0.0
+                    if self.sprite_image >= len(self.animation) - 1:
+                        self.sprite_image = 0
+                    else:
+                        self.sprite_image += 1
+                SURFACE_MAIN.blit(self.animation[self.sprite_image], (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
 
 
 class ObjectGame:
@@ -54,8 +71,80 @@ class ObjectGame:
         self.current_objects = []
         
         self.message_history = []
-        
-        
+
+
+class ObjectSpriteSheet:
+    """
+    Class used to grab images out of a sprite sheet
+    """
+
+    def __init__(self, file_name):
+        # load sprite sheet
+        self.sprite_sheet = pygame.image.load(file_name).convert()
+        self.tile_dictionary = {
+            'a': 1, 'b': 2, 'c': 3, 'd': 4,
+            'e': 5, 'f': 6, 'g': 7, 'h': 8,
+            'i': 9, 'j': 10, 'k': 11, 'l': 12,
+            'm': 13, 'n': 14, 'o': 15, 'p': 16
+        }
+
+    def get_image(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, scale=None):
+        """
+
+        :param column:
+        :param row:
+        :param width:
+        :param height:
+        :param scale: X, Y tuple with scale parameters
+        :return: list of sprites to be animated
+        """
+
+        sprite_list = []
+
+        image = pygame.Surface([width, height]).convert()
+        image.blit(self.sprite_sheet, (0, 0), (self.tile_dictionary[column] * width, row * height, width, height))
+        image.set_colorkey(constants.COLOR_BLACK)
+
+        if scale:
+            (new_width, new_height) = scale
+            image = pygame.transform.scale(image, (new_width, new_height))
+
+        sprite_list.append(image)
+
+        return sprite_list
+
+    def get_animation(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, num_sprites=1, scale=None):
+        """
+
+        :param column:
+        :param row:
+        :param width:
+        :param height:
+        :param scale: X, Y tuple with scale parameters
+        :return: list of sprites to be animated
+        """
+
+        sprite_list = []
+        for i in range(num_sprites):
+
+            # create blank image
+            image = pygame.Surface([width, height]).convert()
+
+            # copy image from sheet onto blank
+            image.blit(self.sprite_sheet, (0, 0), (self.tile_dictionary[column] * width + width * i, row * height, width, height))
+
+            # set transparency key to black
+            image.set_colorkey(constants.COLOR_BLACK)
+
+            if scale:
+                (new_width, new_height) = scale
+                image = pygame.transform.scale(image, (new_width, new_height))
+
+            sprite_list.append(image)
+
+        return sprite_list
+
+
 #   ______   ______   .___  ___. .______     ______   .__   __.  _______ .__   __. .___________.    _______.
 #  /      | /  __  \  |   \/   | |   _  \   /  __  \  |  \ |  | |   ____||  \ |  | |           |   /       |
 # |  ,----'|  |  |  | |  \  /  | |  |_)  | |  |  |  | |   \|  | |  |__   |   \|  | `---|  |----`  |   (----`
@@ -380,12 +469,19 @@ def game_initialize():
 
     FOV_CALCULATE = True
 
+    # TEMP SPRITES
+
+    char_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
+    enemies_sprite_sheet = ObjectSpriteSheet('data/aquatic_creatures.png')
+    A_PLAYER = char_sprite_sheet.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
+    A_ENEMY = enemies_sprite_sheet.get_animation('k', 1, width=16, height=16, num_sprites=2, scale=(32, 32))
+
     creature_comp1 = ComponentCreature('greg')
-    PLAYER = ObjActor(1, 1, 'Python', constants.S_PLAYER, creature=creature_comp1)
+    PLAYER = ObjActor(1, 1, 'Python', A_PLAYER, animation_speed=1, creature=creature_comp1)
 
     creature_comp2 = ComponentCreature('jack', death_function=death_monster)
     ai_com = AITest()
-    ENEMY = ObjActor(15, 15, 'Crab', constants.S_ENEMY, creature=creature_comp2, ai=ai_com)
+    ENEMY = ObjActor(15, 15, 'Crab', A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com)
 
     GAME.current_objects = [PLAYER, ENEMY]
 
