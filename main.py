@@ -131,6 +131,16 @@ class ObjActor:
 
 
 class ObjectGame:
+    """
+    The obj_Game is an object that stores all the information used by the game to 'keep track' of progress.
+    It will track maps, object lists, and game history or record of messages.
+
+    ** PROPERTIES **
+    ObjectGame.current_map : whatever map is currently loaded.
+    ObjectGame.current_objects : list of objects for the current map.
+    ObjectGame.message_history : list of messages that have been pushed to the player over the course of a game.
+    """
+
     def __init__(self):
         
         self.current_map = map_create()
@@ -141,10 +151,17 @@ class ObjectGame:
 
 class ObjectSpriteSheet:
     """
-    Class used to grab images out of a sprite sheet
+    Class used to grab images out of a sprite sheet. As a class, it allows you to access and subdivide portions of the
+    sprite_sheet.
+
+    ** PROPERTIES **
+    ObjectSpriteSheet.sprite_sheet : The loaded spritesheet accessed through the file_name argument.
     """
 
     def __init__(self, file_name):
+        """
+        :param file_name: String which contains the directory/filename of the image for use as a spritesheet.
+        """
         # load sprite sheet
         self.sprite_sheet = pygame.image.load(file_name).convert()
         self.tile_dictionary = {
@@ -156,12 +173,12 @@ class ObjectSpriteSheet:
 
     def get_image(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, scale=None):
         """
-
-        :param column:
-        :param row:
-        :param width:
-        :param height:
-        :param scale: X, Y tuple with scale parameters
+        returns a list containing a single image from a spritesheet given a grid location.
+        :param column: Letter which gets converted into an integer
+        :param row: integer
+        :param width: integer, individual image width in pixels
+        :param height: integer, individual sprite height in pixels
+        :param scale: Tuple (width, height).  If included, scales the images to a new size
         :return: list of sprites to be animated
         """
 
@@ -181,13 +198,13 @@ class ObjectSpriteSheet:
 
     def get_animation(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, num_sprites=1, scale=None):
         """
-
-        :param column:
-        :param row:
-        :param width:
-        :param height:
+        returns a list containing a sequence of images starting from a grid location.
+        :param column: Letter which gets converted into an integer
+        :param row: integer
+        :param width: integer, individual image width in pixels
+        :param height: integer, individual sprite height in pixels
         :param num_sprites: number of sprites on an animation
-        :param scale: X, Y tuple with scale parameters
+        :param scale: Tuple (width, height).  If included, scales the images to a new size
         :return: list of sprites to be animated
         """
 
@@ -222,16 +239,36 @@ class ObjectSpriteSheet:
 
 class ComponentCreature:
     """
-    Creatures have health, can die, and can damage other objects by attacking them.
+    Creatures have health, and can damage other objects by attacking them.  Can also die.
+
+    ** METHODS **
+    *************
+    com_Creature.move : .
+
+    com_Creature.attack : allows the creature to attack a target.
+
+    com_Creature.take_damage : Creature takes damage, and if the
+    creature's health falls below 0, executes the death function.
     """
 
     def __init__(self, name_instance, hp=10, death_function=None):
+        """
+
+        :param name_instance: String, name of specific object. "Bob" for example.
+        :param hp: integer, health of the creature. Is converted into both the maximum health and the current health.
+        :param death_function: function that is executed whenever the creature's health dips below 0.
+        """
         self.name_instance = name_instance
         self.max_hp = hp
         self.hp = hp
         self.death_function = death_function
 
     def move(self, dx, dy):
+        """
+        Attempts to move the object in a specific direction
+        :param dx: difference of x from current location
+        :param dy: difference of y from current location
+        """
 
         tile_is_wall = (GAME.current_map[self.owner.x + dx][self.owner.y + dy].block_path is True)
 
@@ -244,11 +281,20 @@ class ComponentCreature:
             self.owner.y += dy
 
     def attack(self, target, damage):
+        """
+        Allows the creature to attack a target
+        :param target: object attacked by the creature
+        :param damage: damage of the attack
+        """
         message = f'{self.name_instance} attacks {target.creature.name_instance} for {damage} damage!'
         game_message(message, constants.COLOR_RED)
         target.creature.take_damage(damage)
 
     def take_damage(self, damage):
+        """
+        Creature takes damage, and if the creature's health falls below 0, executes the death function.
+        :param damage: damage taken by the creature
+        """
         self.hp -= damage
         message = f"{self.name_instance}'s health is {self.hp}/{self.max_hp}"
         game_message(message, constants.COLOR_WHITE)
@@ -605,8 +651,6 @@ def menu_inventory():
         # Display Menu
         SURFACE_MAIN.blit(inventory_surface, menu_location)
         pygame.display.flip()
-
-
 
 
 #   _______      ___      .___  ___.  _______
