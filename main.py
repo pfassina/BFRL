@@ -606,8 +606,9 @@ def menu_pause():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p:
                     menu_close = True
-        
+
         draw_text(SURFACE_MAIN, menu_text, constants.FONT_DEBUG_MESSAGE, text_location, constants.COLOR_WHITE, constants.COLOR_BLACK)
+        CLOCK.tick(constants.GAME_FPS)
         pygame.display.flip()
 
 
@@ -621,7 +622,10 @@ def menu_inventory():
     window_width = constants.MAP_WIDTH * constants.CELL_WIDTH
     window_height = constants.MAP_HEIGHT * constants.CELL_HEIGHT
 
-    menu_location = (window_width/2 - menu_width/2, window_height/2 - menu_height/2)
+    menu_x = window_width/2 - menu_width/2
+    menu_y = window_height/2 - menu_height/2
+
+    menu_location = (menu_x, menu_y)
 
     menu_font = constants.FONT_MESSAGE_TEXT
     menu_text_height = helper_text_height(menu_font)
@@ -633,23 +637,43 @@ def menu_inventory():
         # Clear the menu
         inventory_surface.fill(constants.COLOR_BLACK)
 
-        # Register Changes
-
+        # Collect list of item names
         item_list = [item.name_object for item in PLAYER.container.inventory]
 
+        # Get list of input events
         events_list = pygame.event.get()
+
+
+        # Get mouse coordinates relative to inventory window
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        mouse_x_relative = mouse_x - menu_x
+        mouse_y_relative = mouse_y - menu_y
+
+        # Check if mouse is in the window
+        mouse_in_window = (0 < mouse_x_relative < menu_width and 0 < mouse_y_relative < menu_height)
+
+        # convert mouse height to inventory line
+        mouse_line_selection = int(mouse_y_relative / menu_text_height)
+
         for event in events_list:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_i:
                     menu_close = True
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # print(pygame.mouse.get_pressed())
+                    if event.button == 1 and mouse_in_window and mouse_line_selection <= len(item_list):
+                        print(mouse_line_selection)
 
         # Draw item list
-
-        for index, name in enumerate(item_list):
-            draw_text(inventory_surface, name, constants.FONT_MESSAGE_TEXT, (0, 0 + index * menu_text_height), constants.COLOR_WHITE, constants.COLOR_BLACK)
+        for line, name in enumerate(item_list):
+            if line == mouse_line_selection and mouse_in_window:
+                draw_text(inventory_surface, name, constants.FONT_MESSAGE_TEXT, (0, 0 + line * menu_text_height), constants.COLOR_WHITE, constants.COLOR_GREY)
+            else:
+                draw_text(inventory_surface, name, constants.FONT_MESSAGE_TEXT, (0, 0 + line * menu_text_height), constants.COLOR_WHITE, constants.COLOR_BLACK)
 
         # Display Menu
         SURFACE_MAIN.blit(inventory_surface, menu_location)
+        CLOCK.tick(constants.GAME_FPS)
         pygame.display.flip()
 
 
@@ -700,6 +724,7 @@ def game_initialize():
 
     # initialize pygame
     pygame.init()
+    pygame.key.set_repeat(200, 70)
 
     SURFACE_MAIN = pygame.display.set_mode((
             constants.MAP_WIDTH * constants.CELL_WIDTH,
