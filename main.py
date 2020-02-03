@@ -12,12 +12,25 @@ import constants
 
 
 class StructureTile:
+    """
+    This class functions as a struct that tracks the data for each
+    tile within a map.
+
+    ** PROPERTIES **
+    StructureTile.block_path : TRUE if tile prevents actors from moving through it under normal circumstances.
+    StructureTile.explored : Initializes to FALSE, set to true if player has seen it before.
+    """
+
     def __init__(self, block_path):
         self.block_path = block_path
         self.explored = False
 
 
 class StructureAssets:
+    """
+    This class is a structure that holds all assets used in the game. This includes sprites, sound effects, and music.
+    """
+
     def __init__(self):
         
         # Sprite Sheets
@@ -35,10 +48,6 @@ class StructureAssets:
         self.S_FLOOR = pygame.image.load('data/floor.png')
         self.S_FLOOR_EXPLORED = pygame.image.load('data/floor_explored.png')
 
-        # Fonts
-        self.FONT_DEBUG_MESSAGE = pygame.font.Font('data/joystix.ttf', 16)
-        self.FONT_MESSAGE_TEXT = pygame.font.Font('data/joystix.ttf', 12)
-
 
 #   ______   .______          __   _______   ______ .___________.    _______.
 #  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
@@ -49,9 +58,36 @@ class StructureAssets:
 
 
 class ObjActor:
+    """
+    The actor object represents every entity in the game that 'interacts' with the player or the environment
+    in some way. It is made up of components which alter an actors behavior.
+
+    ** PROPERTIES **
+    ObjActor.flicker_speed : represents the conversion of animation length in seconds to number of frames
+    ObjActor.flicker_timer : the current counter until the next frame of the animation should be displayed.
+    ObjActor.sprite_image : the index location of the current image of the animation that is being displayed.
+
+    ** METHODS **
+    obj_Actor.draw() : this method draws the object to the screen.
+    """
     def __init__(self, x, y, name_object, animation, animation_speed=0.5, creature=None, ai=None, container=None, item=None):
+        """
+        :param x: starting x position on the current map
+        :param y: starting y position on the current map
+        :param name_object: string containing the name of the object, "chair" or "goblin" for example.
+        :param animation: A list of images that make up the object's spritesheet. Created with StructureAssets class.
+        :param animation_speed: Time in seconds it takes to loop through the object animation.
+        :param creature: any object that has health, and generally can fight
+        :param ai: ai is a component that executes an action every time the object is able to act
+        :param container: containers are objects that can hold an inventory
+        :param item: items are items that are able to be picked up and used
+        """
+
         self.x = x
         self.y = y
+
+        self.name_object = name_object
+
         self.animation = animation
         self.animation_speed = animation_speed / 1.0
 
@@ -77,6 +113,7 @@ class ObjActor:
             self.item.owner = self
 
     def draw(self):
+        """draws the obj_Actor to the screen"""
         is_visible = FOV_MAP.fov[self.y, self.x]
         if is_visible:
             if len(self.animation) == 1:
@@ -296,6 +333,7 @@ def death_monster(monster):
 
 
 def map_create():
+
     new_map = [[StructureTile(False) for y in range(0, constants.MAP_HEIGHT)] for x in range(0, constants.MAP_WIDTH)]
 
     new_map[10][10].block_path = True
@@ -411,7 +449,7 @@ def draw_map(map_to_draw):
 
 
 def draw_debug():
-    draw_text(SURFACE_MAIN, f'FPS: {int(CLOCK.get_fps())}', (0, 0), constants.COLOR_WHITE, constants.COLOR_BLACK)
+    draw_text(SURFACE_MAIN, f'FPS: {int(CLOCK.get_fps())}', constants.FONT_DEBUG_MESSAGE, (0, 0), constants.COLOR_WHITE, constants.COLOR_BLACK)
 
 
 def draw_messages():
@@ -421,25 +459,27 @@ def draw_messages():
     else:
         to_draw = GAME.message_history[-constants.NUM_MESSAGES:]
 
-    text_height = helper_text_height(ASSETS.FONT_MESSAGE_TEXT)
+    text_height = helper_text_height(constants.FONT_MESSAGE_TEXT)
 
     start_y = constants.MAP_HEIGHT * constants.CELL_HEIGHT - (constants.NUM_MESSAGES * text_height) - 10
 
     for index, (message, color) in enumerate(to_draw):
-        draw_text(SURFACE_MAIN, message, (0, start_y + index * text_height), color, constants.COLOR_BLACK)
+        draw_text(SURFACE_MAIN, message, constants.FONT_MESSAGE_TEXT, (0, start_y + index * text_height), color, constants.COLOR_BLACK)
 
 
-def draw_text(display_surface, text_to_display, coordinates, text_color, back_color=None):
+def draw_text(display_surface, text_to_display, font, coordinates, text_color, back_color=None):
+
     """
     This function takes in some text, and display it on the referenced surfaced
     :param display_surface: Surface to display text
     :param text_to_display: Text to be displayed
+    :param font: font of the text
     :param coordinates: Coordinates tuple
     :param text_color: Text color
     :param back_color: Text background color
     """
 
-    text_surface, text_rectangle = helper_text_objects(text_to_display, text_color, back_color)
+    text_surface, text_rectangle = helper_text_objects(text_to_display, font, text_color, back_color)
     text_rectangle.topleft = coordinates
     display_surface.blit(text_surface, text_rectangle)
 
@@ -452,19 +492,19 @@ def draw_text(display_surface, text_to_display, coordinates, text_color, back_co
 # |__|  |__| |_______||_______|| _|      |_______|| _| `._____|_______/    
 
 
-def helper_text_objects(incoming_text, incoming_color, incoming_background):
+def helper_text_objects(incoming_text, incoming_font, incoming_color, incoming_background):
 
     if incoming_background:
-        text_surface = ASSETS.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color, incoming_background)
+        text_surface = incoming_font.render(incoming_text, False, incoming_color, incoming_background)
     else:
-        text_surface = ASSETS.FONT_DEBUG_MESSAGE.render(incoming_text, False, incoming_color)
+        text_surface = incoming_font.render(incoming_text, False, incoming_color)
 
     return text_surface, text_surface.get_rect()
 
 
 def helper_text_height(font):
     """
-    Return the Height of a font in pixels
+    Returns the Height of a font in pixels
     :param font: font to be examined
     :return: font height in pixels
     """
@@ -473,6 +513,100 @@ def helper_text_height(font):
     font_rect = font_object.get_rect()
 
     return font_rect.height
+
+
+def helper_text_width(font):
+    """
+    Returns the width of a font in pixels
+    :param font: font to be examined
+    :return: font height in pixels
+    """
+
+    font_object = font.render('a', False, (0, 0, 0))
+    font_rect = font_object.get_rect()
+
+    return font_rect.width
+
+
+# .___  ___.  _______ .__   __.  __    __       _______.
+# |   \/   | |   ____||  \ |  | |  |  |  |     /       |
+# |  \  /  | |  |__   |   \|  | |  |  |  |    |   (----`
+# |  |\/|  | |   __|  |  . `  | |  |  |  |     \   \
+# |  |  |  | |  |____ |  |\   | |  `--'  | .----)   |
+# |__|  |__| |_______||__| \__|  \______/  |_______/
+
+
+def menu_pause():
+    """
+    This menu pauses the game and displays a simple message
+    """
+
+    menu_close = False
+
+    window_width = constants.MAP_WIDTH * constants.CELL_WIDTH
+    window_height = constants.MAP_HEIGHT * constants.CELL_HEIGHT
+
+    menu_text = 'PAUSED'
+    menu_font = constants.FONT_DEBUG_MESSAGE
+
+    text_height = helper_text_height(menu_font)
+    text_width = helper_text_width(menu_font) * len(menu_text)
+
+    text_location = (window_width/2 - text_width/2, window_height/2 - text_height/2)
+
+    while not menu_close:
+        events_list = pygame.event.get()
+        for event in events_list:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    menu_close = True
+        
+        draw_text(SURFACE_MAIN, menu_text, constants.FONT_DEBUG_MESSAGE, text_location, constants.COLOR_WHITE, constants.COLOR_BLACK)
+        pygame.display.flip()
+
+
+def menu_inventory():
+
+    menu_close = False
+
+    menu_width = 200
+    menu_height = 200
+
+    window_width = constants.MAP_WIDTH * constants.CELL_WIDTH
+    window_height = constants.MAP_HEIGHT * constants.CELL_HEIGHT
+
+    menu_location = (window_width/2 - menu_width/2, window_height/2 - menu_height/2)
+
+    menu_font = constants.FONT_MESSAGE_TEXT
+    menu_text_height = helper_text_height(menu_font)
+
+    inventory_surface = pygame.Surface((menu_width, menu_height))
+
+    while not menu_close:
+
+        # Clear the menu
+        inventory_surface.fill(constants.COLOR_BLACK)
+
+        # Register Changes
+
+        item_list = [item.name_object for item in PLAYER.container.inventory]
+
+        events_list = pygame.event.get()
+        for event in events_list:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_i:
+                    menu_close = True
+
+        # Draw item list
+
+        for index, name in enumerate(item_list):
+            draw_text(inventory_surface, name, constants.FONT_MESSAGE_TEXT, (0, 0 + index * menu_text_height), constants.COLOR_WHITE, constants.COLOR_BLACK)
+
+        # Display Menu
+        SURFACE_MAIN.blit(inventory_surface, menu_location)
+        pygame.display.flip()
+
+
 
 
 #   _______      ___      .___  ___.  _______
@@ -537,15 +671,21 @@ def game_initialize():
     ASSETS = StructureAssets()
 
     container_com1 = ComponentContainer()
-    creature_comp1 = ComponentCreature('greg')
+    creature_comp1 = ComponentCreature('Greg')
     PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_comp1, container=container_com1)
 
     item_com1 = ComponentItem()
-    creature_comp2 = ComponentCreature('jack', death_function=death_monster)
+    creature_comp2 = ComponentCreature('Jack', death_function=death_monster)
     ai_com = AITest()
-    ENEMY = ObjActor(15, 15, 'Crab', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com, item=item_com1)
+    ENEMY = ObjActor(15, 15, 'Lobster', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com, item=item_com1)
 
-    GAME.current_objects = [PLAYER, ENEMY]
+
+    item_com2 = ComponentItem()
+    creature_comp3 = ComponentCreature('Bob', death_function=death_monster)
+    ai_com2 = AITest()
+    ENEMY2 = ObjActor(14, 15, 'Faux Crab', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp3, ai=ai_com2, item=item_com2)
+
+    GAME.current_objects = [PLAYER, ENEMY, ENEMY2]
 
 
 def game_handle_keys():
@@ -582,6 +722,10 @@ def game_handle_keys():
             if event.key == pygame.K_d:
                 if len(PLAYER.container.inventory) > 0:
                     PLAYER.container.inventory[-1].item.drop(PLAYER.x, PLAYER.y)
+            if event.key == pygame.K_p:
+                menu_pause()
+            if event.key == pygame.K_i:
+                menu_inventory()
 
     return 'no-action'
 

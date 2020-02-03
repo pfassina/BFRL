@@ -1,5 +1,8 @@
-
 import tcod
+import pygame
+
+
+pygame.init()
 
 
 # Game Sizes
@@ -31,3 +34,7 @@ NUM_MESSAGES = 4
 TORCH_RADIUS = 10
 FOV_LIGHT_WALLS = True
 FOV_ALGORITHM = tcod.FOV_BASIC
+
+# Fonts
+FONT_DEBUG_MESSAGE = pygame.font.Font('data/joystix.ttf', 16)
+FONT_MESSAGE_TEXT = pygame.font.Font('data/joystix.ttf', 12)
