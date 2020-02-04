@@ -70,7 +70,8 @@ class ObjActor:
     ** METHODS **
     obj_Actor.draw() : this method draws the object to the screen.
     """
-    def __init__(self, x, y, name_object, animation, animation_speed=0.5, creature=None, ai=None, container=None, item=None):
+    def __init__(self, x, y, name_object, animation, animation_speed=0.5,
+                 creature=None, ai=None, container=None, item=None):
         """
         :param x: starting x position on the current map
         :param y: starting y position on the current map
@@ -197,7 +198,8 @@ class ObjectSpriteSheet:
 
         return sprite_list
 
-    def get_animation(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, num_sprites=1, scale=None):
+    def get_animation(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, num_sprites=1,
+                      scale=None):
         """
         returns a list containing a sequence of images starting from a grid location.
         :param column: Letter which gets converted into an integer
@@ -244,18 +246,13 @@ class ComponentCreature:
     Creatures have health, and can damage other objects by attacking them.  Can also die.
 
     ** METHODS **
-    *************
-    com_Creature.move : .
-
-    com_Creature.attack : allows the creature to attack a target.
-
-    com_Creature.take_damage : Creature takes damage, and if the
-    creature's health falls below 0, executes the death function.
+    ComponentCreature.move : allows the creature to move to a different tile
+    ComponentCreature.attack : allows the creature to attack a target.
+    ComponentCreature.take_damage : Creature takes damage. If health falls below 0, executes the death function.
     """
 
     def __init__(self, name_instance, hp=10, death_function=None):
         """
-
         :param name_instance: String, name of specific object. "Bob" for example.
         :param hp: integer, health of the creature. Is converted into both the maximum health and the current health.
         :param death_function: function that is executed whenever the creature's health dips below 0.
@@ -358,7 +355,6 @@ class ComponentItem:
         game_message('Item dropped!')
 
     def use(self):
-
         # Use the item by production an effect and removing it
         if self.use_function:
             result = self.use_function(self.container.owner, self.value)
@@ -445,7 +441,6 @@ def map_check_for_creature(x, y, exclude_object=None):
                 target = obj
 
     return target
-
 
 
 def map_check_for_wall(x, y):
@@ -967,7 +962,7 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME, CLOCK, FOV_CALCULATE, PLAYER, ENEMY, ASSETS
+    global SURFACE_MAIN, GAME, CLOCK, FOV_CALCULATE, PLAYER, ASSETS
 
     # initialize pygame
     pygame.init()
@@ -986,61 +981,77 @@ def game_initialize():
     
     ASSETS = StructureAssets()
 
-    container_com1 = ComponentContainer()
-    creature_comp1 = ComponentCreature('Greg')
-    PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_comp1, container=container_com1)
+    # Temporary Creature Creation
+    # Player
+    ctn = ComponentContainer()
+    c1 = ComponentCreature('Greg')
+    PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=c1, container=ctn)
 
-    item_com1 = ComponentItem(use_function=cast_heal, value=5)
-    creature_comp2 = ComponentCreature('Jack', death_function=death_monster)
-    ai_com = AITest()
-    ENEMY = ObjActor(15, 15, 'Lobster', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com, item=item_com1)
+    # Enemy 1
+    i1 = ComponentItem(use_function=cast_heal, value=5)
+    c2 = ComponentCreature('Jack', death_function=death_monster)
+    ai1 = AITest()
+    enemy = ObjActor(15, 15, 'Lobster', ASSETS.A_ENEMY, animation_speed=1, creature=c2, ai=ai1, item=i1)
 
-    item_com2 = ComponentItem(use_function=cast_heal, value=5)
-    creature_comp3 = ComponentCreature('Bob', death_function=death_monster)
-    ai_com2 = AITest()
-    ENEMY2 = ObjActor(14, 15, 'Faux Crab', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp3, ai=ai_com2, item=item_com2)
+    # Enemy 2
+    i2 = ComponentItem(use_function=cast_heal, value=5)
+    c3 = ComponentCreature('Bob', death_function=death_monster)
+    ai2 = AITest()
+    enemy2 = ObjActor(14, 15, 'Fake Crab', ASSETS.A_ENEMY, animation_speed=1, creature=c3, ai=ai2, item=i2)
 
-    GAME.current_objects = [PLAYER, ENEMY, ENEMY2]
+    GAME.current_objects = [PLAYER, enemy, enemy2]
 
 
 def game_handle_keys():
-
+    """
+    Handles player inputs
+    """
     global FOV_CALCULATE
 
     # get player input
     events = pygame.event.get()
     for event in events:
+        # Quit game if player closes window
         if event.type == pygame.QUIT:
             return 'QUIT'
         if event.type == pygame.KEYDOWN:
+            # moves up by pressing the "Up" key
             if event.key == pygame.K_UP:
                 PLAYER.creature.move(0, -1)
                 FOV_CALCULATE = True
                 return 'player-moved'
+            # moves down by pressing the "Down" key
             if event.key == pygame.K_DOWN:
                 PLAYER.creature.move(0, 1)
                 FOV_CALCULATE = True
                 return 'player-moved'
+            # moves left by pressing the "Left" key
             if event.key == pygame.K_LEFT:
                 PLAYER.creature.move(-1, 0)
                 FOV_CALCULATE = True
                 return 'player-moved'
+            # moves right by pressing the "Right" key
             if event.key == pygame.K_RIGHT:
                 PLAYER.creature.move(1, 0)
                 FOV_CALCULATE = True
                 return 'player-moved'
+            # Gets item from the ground by pressing the "g" key
             if event.key == pygame.K_g:
                 objects_at_player = map_objects_at_coordinates(PLAYER.x, PLAYER.y)
                 for obj in objects_at_player:
                     if obj.item:
                         obj.item.pick_up(PLAYER)
+            # Drops first item in the inventory onto the ground by pressing the "d" key
             if event.key == pygame.K_d:
                 if len(PLAYER.container.inventory) > 0:
                     PLAYER.container.inventory[-1].item.drop(PLAYER.x, PLAYER.y)
+            # Pauses the game by pressing the "p" key
             if event.key == pygame.K_p:
                 menu_pause()
+            # Opens the inventory menu by pressing the "i" key
             if event.key == pygame.K_i:
                 menu_inventory()
+            # Casts spell by pressing the "l" key
             if event.key == pygame.K_l:
                 cast_fireball()
 
