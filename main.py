@@ -318,8 +318,11 @@ class ComponentCreature:
 
 
 class ComponentContainer:
-    def __init__(self, volume=10.0, inventory=[]):
+    def __init__(self, volume=10.0, inventory=None):
+
         self.max_volume = volume
+        if inventory is None:
+            inventory = []
         self.inventory = inventory
 
     # get names of everything in inventory
@@ -493,9 +496,6 @@ def draw_game():
     draw_debug()
     draw_messages()
 
-    # update the display
-    pygame.display.flip()
-
 
 def draw_map(map_to_draw):
 
@@ -557,6 +557,19 @@ def draw_text(display_surface, text_to_display, font, coordinates, text_color, b
     text_rectangle.topleft = coordinates
     display_surface.blit(text_surface, text_rectangle)
 
+
+def draw_tile_rect(coordinates):
+
+    x, y = coordinates
+    new_x = x * constants.CELL_WIDTH
+    new_y = y * constants.CELL_HEIGHT
+
+    new_surface = pygame.Surface((constants.CELL_WIDTH, constants.CELL_HEIGHT))
+    new_surface.fill(constants.COLOR_WHITE)
+    new_surface.set_alpha(150)
+
+    # SURFACE_MAIN
+    SURFACE_MAIN.blit(new_surface, (new_x, new_y))
 
 #  __    __   _______  __      .______    _______ .______          _______.
 # |  |  |  | |   ____||  |     |   _  \  |   ____||   _  \        /       |
@@ -660,6 +673,8 @@ def menu_pause():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p:
                     menu_close = True
+                if event.key == pygame.K_ESCAPE:
+                    menu_close = True
 
         font_color = constants.COLOR_WHITE
         bg_color = constants.COLOR_BLACK
@@ -719,6 +734,8 @@ def menu_inventory():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_i:
                     menu_close = True
+                if event.key == pygame.K_ESCAPE:
+                    menu_close = True
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1 and mouse_in_window and mouse_line_selection <= len(item_list):
                     PLAYER.container.inventory[mouse_line_selection].item.use()
@@ -733,6 +750,41 @@ def menu_inventory():
 
         # Display Menu
         SURFACE_MAIN.blit(inventory_surface, menu_location)
+        pygame.display.flip()
+
+
+def menu_tile_select():
+    """
+    This menu lets the player select a tile on the map.
+    The game pauses, produces a screen rectangle, and returns the map address when the LMB is clicked.
+    :return: (x,y) map address tuple
+    """
+
+    menu_close = False
+    while not menu_close:
+
+        # get mouse position
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        map_coordinates_x = int(mouse_x / constants.CELL_WIDTH)
+        map_coordinates_y = int(mouse_y / constants.CELL_HEIGHT)
+
+        # get button clicks
+        events_list = pygame.event.get()
+        for event in events_list:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_l:
+                    menu_close = True
+                if event.key == pygame.K_ESCAPE:
+                    menu_close = True
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    game_message(f'x:{map_coordinates_x}, y:{map_coordinates_y}')
+
+        # draw game first
+        draw_game()
+
+        # draw rectangle at mouse position on top of game
+        draw_tile_rect((map_coordinates_x, map_coordinates_y))
         CLOCK.tick(constants.GAME_FPS)
         pygame.display.flip()
 
@@ -767,6 +819,9 @@ def game_main_loop():
 
         # draw the game
         draw_game()
+
+        # update the display
+        pygame.display.flip()
 
         CLOCK.tick(constants.GAME_FPS)
 
@@ -854,6 +909,9 @@ def game_handle_keys():
                 menu_pause()
             if event.key == pygame.K_i:
                 menu_inventory()
+            if event.key == pygame.K_l:
+                menu_tile_select()
+
 
     return 'no-action'
 
