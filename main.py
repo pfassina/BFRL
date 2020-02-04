@@ -276,7 +276,7 @@ class ComponentCreature:
 
         target = map_check_for_creatures(self.owner.x + dx, self.owner.y + dy, self.owner)
         if target:
-            self.attack(target, 10)
+            self.attack(target, 2)
 
         if not tile_is_wall and target is None:
             self.owner.x += dx
@@ -430,14 +430,15 @@ def map_check_for_creatures(x, y, exclude_object=None):
     target = None
     if exclude_object:
         for obj in GAME.current_objects:
-            if (obj is not exclude_object
-                    and obj.x == x
-                    and obj.y == y
-                    and obj.creature):
+            if obj is not exclude_object and obj.x == x and obj.y == y and obj.creature:
+                target = obj
+    else:
+        for obj in GAME.current_objects:
+            if obj.x == x and obj.y == y and obj.creature:
                 target = obj
 
-            if target:
-                return target
+    if target:
+        return target
 
 
 def map_make_fov(incoming_map):
@@ -468,6 +469,21 @@ def map_objects_at_coordinates(x, y):
 
     object_options = [obj for obj in GAME.current_objects if obj.x == x and obj.y == y]
     return object_options
+
+
+def map_find_line(origin_coordinates, destination_coordinates):
+    """
+    Converts two coordinates into a list of titles.
+    :param origin_coordinates: (x1, y1)
+    :param destination_coordinates: (x2, y2)
+    :return: list of coordinates between coordinates 1 and coordinates 2.
+    """
+
+    x1, y1 = origin_coordinates
+    x2, y2 = destination_coordinates
+
+    coordinate_list = list(tcod.line_iter(x1, y1, x2, y2))
+    return coordinate_list
 
 
 #  _______  .______          ___   ____    __    ____  __  .__   __.   _______
@@ -571,6 +587,7 @@ def draw_tile_rect(coordinates):
     # SURFACE_MAIN
     SURFACE_MAIN.blit(new_surface, (new_x, new_y))
 
+
 #  __    __   _______  __      .______    _______ .______          _______.
 # |  |  |  | |   ____||  |     |   _  \  |   ____||   _  \        /       |
 # |  |__|  | |  |__   |  |     |  |_)  | |  |__   |  |_)  |      |   (----`
@@ -639,6 +656,23 @@ def cast_heal(target, value):
         heal_value = min(value, target.creature.max_hp - value)
         game_message(f'{target.creature.name_instance} the {target.name_object} healed for {heal_value} health.')
         return None
+
+
+def cast_lightning(damage):
+    pass
+
+    # prompt player for a tile
+    origin_tile = (PLAYER.x, PLAYER.y)
+    target_tile = menu_tile_select()
+
+    # convert that tile into a list of tiles between player and target
+    list_of_tiles = map_find_line(origin_tile, target_tile)
+
+    # cycle through list, damage all creatures for value
+    for x, y in list_of_tiles[1:]:
+        target = map_check_for_creatures(x, y)
+        if target:
+            target.creature.take_damage(damage)
 
 
 # .___  ___.  _______ .__   __.  __    __       _______.
@@ -778,15 +812,15 @@ def menu_tile_select():
                     menu_close = True
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    game_message(f'x:{map_coordinates_x}, y:{map_coordinates_y}')
+                    return map_coordinates_x, map_coordinates_y
 
         # draw game first
         draw_game()
 
         # draw rectangle at mouse position on top of game
         draw_tile_rect((map_coordinates_x, map_coordinates_y))
-        CLOCK.tick(constants.GAME_FPS)
         pygame.display.flip()
+        CLOCK.tick(constants.GAME_FPS)
 
 
 #   _______      ___      .___  ___.  _______
@@ -910,7 +944,7 @@ def game_handle_keys():
             if event.key == pygame.K_i:
                 menu_inventory()
             if event.key == pygame.K_l:
-                menu_tile_select()
+                cast_lightning(10)
 
 
     return 'no-action'
