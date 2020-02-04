@@ -274,7 +274,7 @@ class ComponentCreature:
 
         tile_is_wall = (GAME.current_map[self.owner.x + dx][self.owner.y + dy].block_path is True)
 
-        target = map_check_for_creatures(self.owner.x + dx, self.owner.y + dy, self.owner)
+        target = map_check_for_creature(self.owner.x + dx, self.owner.y + dy, self.owner)
         if target:
             self.attack(target, 2)
 
@@ -425,7 +425,14 @@ def map_create():
     return new_map
 
 
-def map_check_for_creatures(x, y, exclude_object=None):
+def map_check_for_creature(x, y, exclude_object=None):
+    """
+    Check for creature on target tile. Returns creature owner if found.
+    :param x: tile x coordinate
+    :param y: tile y coordinate
+    :param exclude_object: whether an object should be ignored from check.
+    :return: creature owner object on tile. None if no creature on tile.
+    """
 
     target = None
     if exclude_object:
@@ -437,8 +444,8 @@ def map_check_for_creatures(x, y, exclude_object=None):
             if obj.x == x and obj.y == y and obj.creature:
                 target = obj
 
-    if target:
-        return target
+    return target
+
 
 
 def map_check_for_wall(x, y):
@@ -669,12 +676,14 @@ def cast_heal(target, value):
         return None
 
 
-def cast_lightning(damage):
-    pass
+def cast_lightning():
+
+    damage = 5
+    max_range = 5
 
     # prompt player for a tile
     origin_tile = (PLAYER.x, PLAYER.y)
-    target_tile = menu_tile_select(origin_tile, max_range=5, ignore_walls=False)
+    target_tile = menu_tile_select(origin_tile, max_range=max_range, ignore_walls=False, ignore_creatures=False)
 
     # convert that tile into a list of tiles between player and target
     if target_tile:
@@ -682,11 +691,26 @@ def cast_lightning(damage):
 
     # cycle through list, damage all creatures for value
         for x, y in list_of_tiles[1:]:
-            target = map_check_for_creatures(x, y)
+            target = map_check_for_creature(x, y)
             if target:
                 target.creature.take_damage(damage)
     else:
         print('cast lightning cancelled.')
+
+
+def cast_fireball():
+
+    damage = 5
+    radius = 1
+    max_range = 4
+
+    # Get target tile
+    origin_tile = (PLAYER.x, PLAYER.y)
+    target_tile = menu_tile_select(origin_tile, max_range=max_range, ignore_walls=False)
+
+    # get sequence of tiles
+    # damage all creatures in tiles
+
 
 # .___  ___.  _______ .__   __.  __    __       _______.
 # |   \/   | |   ____||  \ |  | |  |  |  |     /       |
@@ -800,7 +824,7 @@ def menu_inventory():
         pygame.display.flip()
 
 
-def menu_tile_select(origin=None, max_range=None, ignore_walls=True):
+def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_creatures=True):
     """
     This menu lets the player select a tile on the map.
     The game pauses, produces a screen rectangle, and returns the map address when the LMB is clicked.
@@ -823,10 +847,15 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True):
         if max_range:
             list_of_tiles = list_of_tiles[:max_range + 1]
 
-        if not ignore_walls:
-            for i, (x, y) in enumerate(list_of_tiles):
-                if map_check_for_wall(x, y):
-                    list_of_tiles = list_of_tiles[:i + 1]
+        for i, (x, y) in enumerate(list_of_tiles):
+            if i == 0:
+                continue
+            if not ignore_walls and map_check_for_wall(x, y):
+                list_of_tiles = list_of_tiles[:i + 1]
+                break
+            if not ignore_creatures and map_check_for_creature(x, y):
+                list_of_tiles = list_of_tiles[:i + 1]
+                break
 
         # get button clicks
         events_list = pygame.event.get()
@@ -975,8 +1004,7 @@ def game_handle_keys():
             if event.key == pygame.K_i:
                 menu_inventory()
             if event.key == pygame.K_l:
-                cast_lightning(10)
-
+                cast_lightning()
 
     return 'no-action'
 
