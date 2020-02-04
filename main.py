@@ -75,7 +75,7 @@ class ObjActor:
         :param x: starting x position on the current map
         :param y: starting y position on the current map
         :param name_object: string containing the name of the object, "chair" or "goblin" for example.
-        :param animation: A list of images that make up the object's spritesheet. Created with StructureAssets class.
+        :param animation: A list of images that make up the object's sprite sheet. Created with StructureAssets class.
         :param animation_speed: Time in seconds it takes to loop through the object animation.
         :param creature: any object that has health, and generally can fight
         :param ai: ai is a component that executes an action every time the object is able to act
@@ -127,7 +127,8 @@ class ObjActor:
                         self.sprite_image = 0
                     else:
                         self.sprite_image += 1
-                SURFACE_MAIN.blit(self.animation[self.sprite_image], (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
+                draw_location = (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT)
+                SURFACE_MAIN.blit(self.animation[self.sprite_image], draw_location)
 
 
 class ObjectGame:
@@ -215,7 +216,8 @@ class ObjectSpriteSheet:
             image = pygame.Surface([width, height]).convert()
 
             # copy image from sheet onto blank
-            image.blit(self.sprite_sheet, (0, 0), (self.tile_dictionary[column] * width + width * i, row * height, width, height))
+            sprite_location_on_sheet = (self.tile_dictionary[column] * width + width * i, row * height, width, height)
+            image.blit(self.sprite_sheet, (0, 0), sprite_location_on_sheet)
 
             # set transparency key to black
             image.set_colorkey(constants.COLOR_BLACK)
@@ -274,7 +276,7 @@ class ComponentCreature:
 
         target = map_check_for_creatures(self.owner.x + dx, self.owner.y + dy, self.owner)
         if target:
-            self.attack(target, 2)
+            self.attack(target, 10)
 
         if not tile_is_wall and target is None:
             self.owner.x += dx
@@ -318,9 +320,11 @@ class ComponentContainer:
 
 
 class ComponentItem:
-    def __init__(self, weight=0.0, volume=0.0):
+    def __init__(self, weight=0.0, volume=0.0, use_function=None, value=None):
         self.weight = weight
         self.volume = volume
+        self.use_function = use_function
+        self.value = value
 
     def pick_up(self, actor):
         if actor.container:
@@ -339,7 +343,16 @@ class ComponentItem:
         self.owner.y = new_y
         game_message('Item dropped!')
 
-    # use this item
+    def use(self):
+
+        # Use the item by production an effect and removing it
+        if self.use_function:
+            result = self.use_function(self.container.owner, self.value)
+            if result is not None:
+                print('use_function_failed')
+            else:
+                self.container.inventory.remove(self.owner)
+
 
 #      ___       __
 #     /   \     |  |
@@ -454,7 +467,7 @@ def map_objects_at_coordinates(x, y):
 
 def draw_game():
 
-    global SURFACE_MAIN
+    # global SURFACE_MAIN
 
     # clear the surface
     SURFACE_MAIN.fill(constants.COLOR_DEFAULT_BG)
@@ -495,7 +508,10 @@ def draw_map(map_to_draw):
 
 
 def draw_debug():
-    draw_text(SURFACE_MAIN, f'FPS: {int(CLOCK.get_fps())}', constants.FONT_DEBUG_MESSAGE, (0, 0), constants.COLOR_WHITE, constants.COLOR_BLACK)
+    debug_message = f'FPS: {int(CLOCK.get_fps())}'
+    font_color = constants.COLOR_WHITE
+    bg_color = constants.COLOR_BLACK
+    draw_text(SURFACE_MAIN, debug_message, constants.FONT_DEBUG_MESSAGE, (0, 0), font_color, bg_color)
 
 
 def draw_messages():
@@ -510,7 +526,8 @@ def draw_messages():
     start_y = constants.MAP_HEIGHT * constants.CELL_HEIGHT - (constants.NUM_MESSAGES * text_height) - 10
 
     for index, (message, color) in enumerate(to_draw):
-        draw_text(SURFACE_MAIN, message, constants.FONT_MESSAGE_TEXT, (0, start_y + index * text_height), color, constants.COLOR_BLACK)
+        message_location = (0, start_y + index * text_height)
+        draw_text(SURFACE_MAIN, message, constants.FONT_MESSAGE_TEXT, message_location, color, constants.COLOR_BLACK)
 
 
 def draw_text(display_surface, text_to_display, font, coordinates, text_color, back_color=None):
@@ -574,6 +591,27 @@ def helper_text_width(font):
     return font_rect.width
 
 
+# .___  ___.      ___       _______  __    ______
+# |   \/   |     /   \     /  _____||  |  /      |
+# |  \  /  |    /  ^  \   |  |  __  |  | |  ,----'
+# |  |\/|  |   /  /_\  \  |  | |_ | |  | |  |
+# |  |  |  |  /  _____  \ |  |__| | |  | |  `----.
+# |__|  |__| /__/     \__\ \______| |__|  \______|
+
+
+def cast_heal(target, value):
+
+    if target.creature.hp == target.creature.max_hp:
+        print(f'{target.creature.name_instance} the {target.name_object} already at max hp.')
+        return 1
+    if target.creature.hp == target.creature.max_hp:
+        print(f'{target.creature.name_instance} the {target.name_object} already at max hp.')
+        return 1
+
+    print(f'{target.name_object} healed for {value}')
+    return None
+
+
 # .___  ___.  _______ .__   __.  __    __       _______.
 # |   \/   | |   ____||  \ |  | |  |  |  |     /       |
 # |  \  /  | |  |__   |   \|  | |  |  |  |    |   (----`
@@ -607,7 +645,9 @@ def menu_pause():
                 if event.key == pygame.K_p:
                     menu_close = True
 
-        draw_text(SURFACE_MAIN, menu_text, constants.FONT_DEBUG_MESSAGE, text_location, constants.COLOR_WHITE, constants.COLOR_BLACK)
+        font_color = constants.COLOR_WHITE
+        bg_color = constants.COLOR_BLACK
+        draw_text(SURFACE_MAIN, menu_text, constants.FONT_DEBUG_MESSAGE, text_location, font_color, bg_color)
         CLOCK.tick(constants.GAME_FPS)
         pygame.display.flip()
 
@@ -633,6 +673,11 @@ def menu_inventory():
     inventory_surface = pygame.Surface((menu_width, menu_height))
 
     while not menu_close:
+
+        menu_font = constants.FONT_MESSAGE_TEXT
+        menu_font_color = constants.COLOR_WHITE
+        menu_bg_color = constants.COLOR_BLACK
+        menu_mouse_over_bg = constants.COLOR_GREY
 
         # Clear the menu
         inventory_surface.fill(constants.COLOR_BLACK)
@@ -660,14 +705,15 @@ def menu_inventory():
                     menu_close = True
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1 and mouse_in_window and mouse_line_selection <= len(item_list):
-                    print(mouse_line_selection)
+                    PLAYER.container.inventory[mouse_line_selection].item.use()
 
         # Draw item list
         for line, name in enumerate(item_list):
+            name_location = (0, 0 + line * menu_text_height)
             if line == mouse_line_selection and mouse_in_window:
-                draw_text(inventory_surface, name, constants.FONT_MESSAGE_TEXT, (0, 0 + line * menu_text_height), constants.COLOR_WHITE, constants.COLOR_GREY)
+                draw_text(inventory_surface, name, menu_font, name_location, menu_font_color, menu_mouse_over_bg)
             else:
-                draw_text(inventory_surface, name, constants.FONT_MESSAGE_TEXT, (0, 0 + line * menu_text_height), constants.COLOR_WHITE, constants.COLOR_BLACK)
+                draw_text(inventory_surface, name, menu_font, name_location, menu_font_color, menu_bg_color)
 
         # Display Menu
         SURFACE_MAIN.blit(inventory_surface, menu_location)
@@ -741,13 +787,12 @@ def game_initialize():
     creature_comp1 = ComponentCreature('Greg')
     PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_comp1, container=container_com1)
 
-    item_com1 = ComponentItem()
+    item_com1 = ComponentItem(use_function=cast_heal, value=5)
     creature_comp2 = ComponentCreature('Jack', death_function=death_monster)
     ai_com = AITest()
     ENEMY = ObjActor(15, 15, 'Lobster', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp2, ai=ai_com, item=item_com1)
 
-
-    item_com2 = ComponentItem()
+    item_com2 = ComponentItem(use_function=cast_heal, value=5)
     creature_comp3 = ComponentCreature('Bob', death_function=death_monster)
     ai_com2 = AITest()
     ENEMY2 = ObjActor(14, 15, 'Faux Crab', ASSETS.A_ENEMY, animation_speed=1, creature=creature_comp3, ai=ai_com2, item=item_com2)
