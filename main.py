@@ -504,6 +504,22 @@ def map_find_line(origin_coordinates, destination_coordinates):
     return coordinate_list
 
 
+def map_find_radius(coordinates, radius):
+    """
+    Returns all tiles within a radius of a center tile
+    :param coordinates: center tile (x, y) tuple
+    :param radius: radius length
+    :return: list of tiles within radius of center tile
+    """
+
+    center_x, center_y = coordinates
+    tile_list = []
+    for x in range(center_x - radius, center_x + radius + 1):
+        for y in range(center_y - radius, center_y + radius + 1):
+            tile_list.append((x, y))
+
+    return tile_list
+
 #  _______  .______          ___   ____    __    ____  __  .__   __.   _______
 # |       \ |   _  \        /   \  \   \  /  \  /   / |  | |  \ |  |  /  _____|
 # |  .--.  ||  |_)  |      /  ^  \  \   \/    \/   /  |  | |   \|  | |  |  __
@@ -592,15 +608,20 @@ def draw_text(display_surface, text_to_display, font, coordinates, text_color, b
     display_surface.blit(text_surface, text_rectangle)
 
 
-def draw_tile_rect(coordinates):
+def draw_tile_rect(coordinates, tile_color=None, tile_alpha=150):
 
     x, y = coordinates
     new_x = x * constants.CELL_WIDTH
     new_y = y * constants.CELL_HEIGHT
 
+    if tile_color:
+        local_color = tile_color
+    else:
+        local_color = constants.COLOR_WHITE
+
     new_surface = pygame.Surface((constants.CELL_WIDTH, constants.CELL_HEIGHT))
-    new_surface.fill(constants.COLOR_WHITE)
-    new_surface.set_alpha(150)
+    new_surface.fill(local_color)
+    new_surface.set_alpha(tile_alpha)
 
     # SURFACE_MAIN
     SURFACE_MAIN.blit(new_surface, (new_x, new_y))
@@ -683,7 +704,7 @@ def cast_lightning():
 
     # prompt player for a tile
     origin_tile = (PLAYER.x, PLAYER.y)
-    target_tile = menu_tile_select(origin_tile, max_range=max_range, ignore_walls=False, ignore_creatures=False)
+    target_tile = menu_tile_select(origin_tile, max_range=max_range, ignore_walls=False)
 
     # convert that tile into a list of tiles between player and target
     if target_tile:
@@ -694,22 +715,35 @@ def cast_lightning():
             target = map_check_for_creature(x, y)
             if target:
                 target.creature.take_damage(damage)
+                game_message(f'{target.creature.name_instance} is hit by a lightning bolt and takes {damage} damage!')
     else:
         print('cast lightning cancelled.')
 
 
 def cast_fireball():
 
-    damage = 5
-    radius = 1
-    max_range = 4
+    dmg = 5
+    rd = 1
+    rg = 4
 
     # Get target tile
     origin_tile = (PLAYER.x, PLAYER.y)
-    target_tile = menu_tile_select(origin_tile, max_range=max_range, ignore_walls=False)
+    target_tile = menu_tile_select(origin_tile, max_range=rg, ignore_walls=False, ignore_creatures=False, radius=rd)
 
     # get sequence of tiles
-    # damage all creatures in tiles
+    if target_tile:
+        list_of_tiles = map_find_radius(target_tile, rd)
+
+        # damage all creatures in tiles
+        for x, y in list_of_tiles:
+            target = map_check_for_creature(x, y)
+            if target:
+                target.creature.take_damage(dmg)
+                game_message(f'{target.name_object} is hit by a fireball and takes {dmg} damage!')
+    else:
+        print('cast lightning cancelled.')
+
+
 
 
 # .___  ___.  _______ .__   __.  __    __       _______.
@@ -824,7 +858,7 @@ def menu_inventory():
         pygame.display.flip()
 
 
-def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_creatures=True):
+def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_creatures=True, radius=None):
     """
     This menu lets the player select a tile on the map.
     The game pauses, produces a screen rectangle, and returns the map address when the LMB is clicked.
@@ -876,6 +910,12 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
         if len(list_of_tiles) > 1:
             for tile in list_of_tiles[1:]:
                 draw_tile_rect(tile)
+
+        if radius:
+            area_of_effect = map_find_radius(list_of_tiles[-1], radius)
+            for x, y in area_of_effect:
+                draw_tile_rect((x, y), tile_color=constants.COLOR_RED)
+
         else:
             draw_tile_rect((map_coordinates_x, map_coordinates_y))
 
@@ -1004,7 +1044,7 @@ def game_handle_keys():
             if event.key == pygame.K_i:
                 menu_inventory()
             if event.key == pygame.K_l:
-                cast_lightning()
+                cast_fireball()
 
     return 'no-action'
 
