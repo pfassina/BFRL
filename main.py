@@ -305,6 +305,17 @@ class ComponentCreature:
             if self.death_function is not None:
                 self.death_function(self.owner)
 
+    def heal(self, value):
+        """
+        Creature heals hp.
+        :param value: HP healed by the creature
+        """
+
+        if self.hp + value >= self.max_hp:
+            self.hp = self.max_hp
+        else:
+            self.hp += value
+
 
 class ComponentContainer:
     def __init__(self, volume=10.0, inventory=[]):
@@ -600,16 +611,21 @@ def helper_text_width(font):
 
 
 def cast_heal(target, value):
+    """
+    Casts heals, increasing target HP by value amount. Cast cancelled if creature at Max HP.
+    :param target: Creature targeted by Heal
+    :param value: Heal amount
+    :return: None if successful, 'canceled' if not
+    """
 
     if target.creature.hp == target.creature.max_hp:
-        print(f'{target.creature.name_instance} the {target.name_object} already at max hp.')
-        return 1
-    if target.creature.hp == target.creature.max_hp:
-        print(f'{target.creature.name_instance} the {target.name_object} already at max hp.')
-        return 1
-
-    print(f'{target.name_object} healed for {value}')
-    return None
+        game_message(f'{target.creature.name_instance} the {target.name_object} already at max hp.')
+        return 'canceled'
+    else:
+        target.creature.heal(value)
+        heal_value = min(value, target.creature.max_hp - value)
+        game_message(f'{target.creature.name_instance} the {target.name_object} healed for {heal_value} health.')
+        return None
 
 
 # .___  ___.  _______ .__   __.  __    __       _______.
