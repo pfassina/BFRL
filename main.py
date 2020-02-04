@@ -441,6 +441,17 @@ def map_check_for_creatures(x, y, exclude_object=None):
         return target
 
 
+def map_check_for_wall(x, y):
+    """
+    Checks if tile is wall
+    :param x: tile x coordinate
+    :param y: tile y coordinate
+    :return: True if wall
+    """
+
+    return GAME.current_map[x][y].block_path
+
+
 def map_make_fov(incoming_map):
 
     global FOV_MAP
@@ -663,17 +674,19 @@ def cast_lightning(damage):
 
     # prompt player for a tile
     origin_tile = (PLAYER.x, PLAYER.y)
-    target_tile = menu_tile_select()
+    target_tile = menu_tile_select(origin_tile, max_range=5, ignore_walls=False)
 
     # convert that tile into a list of tiles between player and target
-    list_of_tiles = map_find_line(origin_tile, target_tile)
+    if target_tile:
+        list_of_tiles = map_find_line(origin_tile, target_tile)
 
     # cycle through list, damage all creatures for value
-    for x, y in list_of_tiles[1:]:
-        target = map_check_for_creatures(x, y)
-        if target:
-            target.creature.take_damage(damage)
-
+        for x, y in list_of_tiles[1:]:
+            target = map_check_for_creatures(x, y)
+            if target:
+                target.creature.take_damage(damage)
+    else:
+        print('cast lightning cancelled.')
 
 # .___  ___.  _______ .__   __.  __    __       _______.
 # |   \/   | |   ____||  \ |  | |  |  |  |     /       |
@@ -787,7 +800,7 @@ def menu_inventory():
         pygame.display.flip()
 
 
-def menu_tile_select():
+def menu_tile_select(origin=None, max_range=None, ignore_walls=True):
     """
     This menu lets the player select a tile on the map.
     The game pauses, produces a screen rectangle, and returns the map address when the LMB is clicked.
@@ -802,6 +815,19 @@ def menu_tile_select():
         map_coordinates_x = int(mouse_x / constants.CELL_WIDTH)
         map_coordinates_y = int(mouse_y / constants.CELL_HEIGHT)
 
+        if origin:
+            list_of_tiles = map_find_line(origin, (map_coordinates_x, map_coordinates_y))
+        else:
+            list_of_tiles = [(map_coordinates_x, map_coordinates_y)]
+
+        if max_range:
+            list_of_tiles = list_of_tiles[:max_range + 1]
+
+        if not ignore_walls:
+            for i, (x, y) in enumerate(list_of_tiles):
+                if map_check_for_wall(x, y):
+                    list_of_tiles = list_of_tiles[:i + 1]
+
         # get button clicks
         events_list = pygame.event.get()
         for event in events_list:
@@ -812,13 +838,18 @@ def menu_tile_select():
                     menu_close = True
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    return map_coordinates_x, map_coordinates_y
+                    return list_of_tiles[-1]
 
         # draw game first
         draw_game()
 
         # draw rectangle at mouse position on top of game
-        draw_tile_rect((map_coordinates_x, map_coordinates_y))
+        if len(list_of_tiles) > 1:
+            for tile in list_of_tiles[1:]:
+                draw_tile_rect(tile)
+        else:
+            draw_tile_rect((map_coordinates_x, map_coordinates_y))
+
         pygame.display.flip()
         CLOCK.tick(constants.GAME_FPS)
 
