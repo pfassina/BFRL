@@ -49,6 +49,14 @@ class StructureAssets:
         self.S_FLOOR = pygame.image.load('data/floor.png')
         self.S_FLOOR_EXPLORED = pygame.image.load('data/floor_explored.png')
 
+        # Items
+        # since it is not on a spritesheet...
+        sword_img = pygame.image.load('data/sword.png')
+        shield_img = pygame.image.load('data/shield.png')
+
+        self.S_SWORD = [pygame.transform.scale(sword_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
+        self.S_SHIELD = [pygame.transform.scale(shield_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
+
 
 #   ______   .______          __   _______   ______ .___________.    _______.
 #  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
@@ -72,7 +80,7 @@ class ObjActor:
     obj_Actor.draw() : this method draws the object to the screen.
     """
     def __init__(self, x, y, name_object, animation, animation_speed=0.5,
-                 creature=None, ai=None, container=None, item=None):
+                 creature=None, ai=None, container=None, item=None, equipment=None):
         """
         :param x: starting x position on the current map
         :param y: starting y position on the current map
@@ -113,6 +121,25 @@ class ObjActor:
         self.item = item
         if self.item:
             self.item.owner = self
+
+        self.equipment = equipment
+        if self.equipment:
+            self.equipment.owner = self
+
+            # adds an item component to the equipment'owner
+            self.item = ComponentItem()
+            self.item.owner = self
+
+    @property
+    def display_name(self):
+        """Returns the best name to display for this object"""
+        if self.creature:
+            return f'{self.creature.name_instance} the {self.name_object}'
+        if self.item:
+            if self.equipment and self.equipment.equipped:
+                return f'{self.name_object} (EQP)'
+            else:
+                return self.name_object
 
     def draw(self):
         """draws the obj_Actor to the screen"""
@@ -271,15 +298,17 @@ class ComponentCreature:
     ComponentCreature.take_damage : Creature takes damage. If health falls below 0, executes the death function.
     """
 
-    def __init__(self, name_instance, hp=10, death_function=None):
+    def __init__(self, name_instance, base_attack=2, base_defense=0, hp=10, death_function=None):
         """
         :param name_instance: String, name of specific object. "Bob" for example.
         :param hp: integer, health of the creature. Is converted into both the maximum health and the current health.
         :param death_function: function that is executed whenever the creature's health dips below 0.
         """
         self.name_instance = name_instance
-        self.max_hp = hp
+        self.base_attack = base_attack
+        self.base_defense = base_defense
         self.hp = hp
+        self.max_hp = hp
         self.death_function = death_function
 
     def move(self, dx, dy):
@@ -293,21 +322,51 @@ class ComponentCreature:
 
         target = map_check_for_creature(self.owner.x + dx, self.owner.y + dy, self.owner)
         if target:
-            self.attack(target, 2)
+            self.attack(target)
 
         if not tile_is_wall and target is None:
             self.owner.x += dx
             self.owner.y += dy
 
-    def attack(self, target, damage):
+    def attack(self, target):
         """
         Allows the creature to attack a target
         :param target: object attacked by the creature
-        :param damage: damage of the attack
         """
-        message = f'{self.name_instance} attacks {target.creature.name_instance} for {damage} damage!'
+        damage_dealt = self.power - target.creature.defense
+        message = f'{self.name_instance} attacks {target.creature.name_instance} for {damage_dealt} damage!'
         game_message(message, constants.COLOR_RED)
-        target.creature.take_damage(damage)
+        target.creature.take_damage(damage_dealt)
+
+    @property
+    def power(self):
+        """
+        return creature's total power
+        :return: total power
+        """
+
+        total_power = self.base_attack
+        if self.owner.container:
+            object_bonuses = [obj.equipment.attack_bonus for obj in self.owner.container.equipped_items]
+            for bonus in object_bonuses:
+                total_power += bonus
+
+        return total_power
+
+    @property
+    def defense(self):
+        """
+        returns creature's total defense
+        :return: total defense
+        """
+
+        total_defense = self.base_defense
+        if self.owner.container:
+            object_bonuses = [obj.equipment.defense_bonus for obj in self.owner.container.equipped_items]
+            for bonus in object_bonuses:
+                total_defense += bonus
+
+        return total_defense
 
     def take_damage(self, damage):
         """
@@ -347,6 +406,17 @@ class ComponentContainer:
     @property
     def volume(self):
         return 0.0
+
+    @property
+    def equipped_items(self):
+        """
+        returns a list of all items that are currently equipped.
+        :return: list of equipped items
+        """
+
+        list_of_equipped_items = [obj for obj in self.inventory if obj.equipment and obj.equipment.equipped]
+        return list_of_equipped_items
+
     # get the weight of everything within container
 
 
@@ -376,12 +446,52 @@ class ComponentItem:
 
     def use(self):
         # Use the item by production an effect and removing it
+
+        if self.owner.equipment:
+            self.owner.equipment.toggle_equip()
+            return
+
         if self.use_function:
             result = self.use_function(self.container.owner, self.value)
             if result is not None:
                 print('use_function_failed')
             else:
                 self.container.inventory.remove(self.owner)
+
+
+class ComponentEquipment:
+
+    def __init__(self, attack_bonus=0, defense_bonus=0, slot=None):
+
+        self.attack_bonus = attack_bonus
+        self.defense_bonus = defense_bonus
+        self.slot = slot
+
+        self.equipped = False
+
+    def toggle_equip(self):
+        if self.equipped:
+            self.unequip()
+        else:
+            self.equip()
+
+    def equip(self):
+
+        # check for equipment in slot
+        all_equipped_items = self.owner.item.container.equipped_items
+
+        for item in all_equipped_items:
+            if item.equipment.slot == self.slot:
+                game_message('equipment slot is occupied', constants.COLOR_RED)
+                return
+
+        # equips if slot is free
+        self.equipped = True
+        game_message('Item equipped')
+
+    def unequip(self):
+        self.equipped = False
+        game_message('Item unequipped')
 
 
 #      ___       __
@@ -408,8 +518,7 @@ class AIConfuse:
             self.num_turns -= 1
         else:
             self.owner.ai = self.old_ai
-            game_message('The creature has broekn free from the spell!', constants.COLOR_RED)
-
+            game_message(f'{self.owner.display_name} has broken free!', constants.COLOR_RED)
 
 
 class AIChase:
@@ -420,13 +529,13 @@ class AIChase:
     def take_turn(self):
 
         monster = self.owner
-        if tcod.map_is_in_fov(FOV_MAP, monster.x, monster.y):
+        if FOV_MAP.fov[monster.x, monster.y]:
             # Moves towards the player if far away
             if monster.distance_to(PLAYER) >= 2:
                 monster.move_towards(PLAYER)
             # If close enough, attack player
             elif PLAYER.creature.hp > 0:
-                monster.creature.attack(PLAYER, 3)
+                monster.creature.attack(PLAYER)
 
 #  _______   _______     ___   .___________. __    __
 # |       \ |   ____|   /   \  |           ||  |  |  |
@@ -813,9 +922,6 @@ def cast_fireball():
 
 def cast_confusion():
 
-    # select tile
-    origin_tile = (PLAYER.x, PLAYER.y)
-
     # get target
     target_tile = menu_tile_select()
     if target_tile:
@@ -828,7 +934,7 @@ def cast_confusion():
             target.ai = AIConfuse(old_ai=o_ai, num_turns=5)
             target.ai.owner = target
 
-            game_message("The creature's eyes glaze over", constants.COLOR_GREEN)
+            game_message(f"{target.display_name} is confused. The creature's eyes glaze over", constants.COLOR_GREEN)
 
 
 # .___  ___.  _______ .__   __.  __    __       _______.
@@ -904,7 +1010,7 @@ def menu_inventory():
         inventory_surface.fill(constants.COLOR_BLACK)
 
         # Collect list of item names
-        item_list = [item.name_object for item in PLAYER.container.inventory]
+        item_list = [item.display_name for item in PLAYER.container.inventory]
 
         # Get list of input events
         events_list = pygame.event.get()
@@ -937,6 +1043,10 @@ def menu_inventory():
                 draw_text(inventory_surface, name, menu_font, name_location, menu_font_color, menu_mouse_over_bg)
             else:
                 draw_text(inventory_surface, name, menu_font, name_location, menu_font_color, menu_bg_color)
+
+        # Render Game
+
+        draw_game()
 
         # Display Menu
         SURFACE_MAIN.blit(inventory_surface, menu_location)
@@ -1079,7 +1189,7 @@ def game_initialize():
     # Temporary Creature Creation
     # Player
     ctn = ComponentContainer()
-    c1 = ComponentCreature('Greg')
+    c1 = ComponentCreature('Greg', base_attack=4)
     PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=c1, container=ctn)
 
     # Enemy 1
@@ -1094,7 +1204,19 @@ def game_initialize():
     ai2 = AIChase()
     enemy2 = ObjActor(14, 15, 'Fake Crab', ASSETS.A_ENEMY, animation_speed=1, creature=c3, ai=ai2, item=i2)
 
-    GAME.current_objects = [PLAYER, enemy, enemy2]
+    # create a sword
+    e1 = ComponentEquipment(attack_bonus=2, slot='hand_right')
+    sword = ObjActor(2, 2, 'Short-sword', ASSETS.S_SWORD, equipment=e1)
+
+    # create a shield
+    e2 = ComponentEquipment(defense_bonus=2, slot='hand_left')
+    shield = ObjActor(2, 3, 'Shield', ASSETS.S_SHIELD, equipment=e2)
+
+    # create a sword
+    e3 = ComponentEquipment(attack_bonus=2, slot='hand_right')
+    sword2 = ObjActor(3, 2, 'Short-sword', ASSETS.S_SWORD, equipment=e3)
+
+    GAME.current_objects = [PLAYER, enemy, enemy2, sword, shield, sword2]
 
 
 def game_handle_keys():
