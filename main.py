@@ -1,5 +1,6 @@
 import tcod
 import pygame
+import math
 
 import constants
 
@@ -130,6 +131,25 @@ class ObjActor:
                         self.sprite_image += 1
                 draw_location = (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT)
                 SURFACE_MAIN.blit(self.animation[self.sprite_image], draw_location)
+
+    def distance_to(self, other):
+
+        dx = other.x - self.x
+        dy = other.y - self.y
+
+        return math.sqrt(dx ** 2 + dy ** 2)
+
+    def move_towards(self, other):
+
+        dx = other.x - self.x
+        dy = other.y - self.y
+
+        distance = math.sqrt(dx ** 2 + dy ** 2)
+
+        dx = int(round(dx / distance, 0))
+        dy = int(round(dy / distance, 0))
+
+        self.creature.move(dx, dy)
 
 
 class ObjectGame:
@@ -372,13 +392,49 @@ class ComponentItem:
 # /__/     \__\ |__|
 
 
-class AITest:
+class AIConfuse:
     """
-    Once per turn, execute.
+    Once per turn, creature moves randomly, until confuse wears off.
+    """
+
+    def __init__(self, old_ai, num_turns):
+        self.old_ai = old_ai
+        self.num_turns = num_turns
+
+    def take_turn(self):
+
+        if self.num_turns > 0:
+            self.owner.creature.move(tcod.random_get_int(None, -1, 1), tcod.random_get_int(None, -1, 1))
+            self.num_turns -= 1
+        else:
+            self.owner.ai = self.old_ai
+            game_message('The creature has broekn free from the spell!', constants.COLOR_RED)
+
+
+
+class AIChase:
+    """
+    Basic monster AI which chases and tries to harm the player
     """
 
     def take_turn(self):
-        self.owner.creature.move(tcod.random_get_int(None, -1, 1), tcod.random_get_int(None, -1, 1))
+
+        monster = self.owner
+        if tcod.map_is_in_fov(FOV_MAP, monster.x, monster.y):
+            # Moves towards the player if far away
+            if monster.distance_to(PLAYER) >= 2:
+                monster.move_towards(PLAYER)
+            # If close enough, attack player
+            elif PLAYER.creature.hp > 0:
+                monster.creature.attack(PLAYER, 3)
+
+#  _______   _______     ___   .___________. __    __
+# |       \ |   ____|   /   \  |           ||  |  |  |
+# |  .--.  ||  |__     /  ^  \ `---|  |----`|  |__|  |
+# |  |  |  ||   __|   /  /_\  \    |  |     |   __   |
+# |  '--'  ||  |____ /  _____  \   |  |     |  |  |  |
+# |_______/ |_______/__/     \__\  |__|     |__|  |__|
+#
 
 
 def death_monster(monster):
@@ -586,10 +642,11 @@ def draw_messages():
         draw_text(SURFACE_MAIN, message, constants.FONT_MESSAGE_TEXT, message_location, color, constants.COLOR_BLACK)
 
 
-def draw_text(display_surface, text_to_display, font, coordinates, text_color, back_color=None):
+def draw_text(display_surface, text_to_display, font, coordinates, text_color, back_color=None, alignment='top-left'):
 
     """
     This function takes in some text, and display it on the referenced surfaced
+    :param alignment:
     :param display_surface: Surface to display text
     :param text_to_display: Text to be displayed
     :param font: font of the text
@@ -599,11 +656,18 @@ def draw_text(display_surface, text_to_display, font, coordinates, text_color, b
     """
 
     text_surface, text_rectangle = helper_text_objects(text_to_display, font, text_color, back_color)
-    text_rectangle.topleft = coordinates
+
+    if alignment == 'top-left':
+        text_rectangle.topleft = coordinates
+    elif alignment == 'center':
+        text_rectangle.center = coordinates
+    else:
+        text_rectangle.topleft = coordinates
+
     display_surface.blit(text_surface, text_rectangle)
 
 
-def draw_tile_rect(coordinates, tile_color=None, tile_alpha=150):
+def draw_tile_rect(coordinates, tile_color=None, tile_alpha=150, marker=None):
 
     x, y = coordinates
     new_x = x * constants.CELL_WIDTH
@@ -617,6 +681,14 @@ def draw_tile_rect(coordinates, tile_color=None, tile_alpha=150):
     new_surface = pygame.Surface((constants.CELL_WIDTH, constants.CELL_HEIGHT))
     new_surface.fill(local_color)
     new_surface.set_alpha(tile_alpha)
+
+    if marker:
+        mx = constants.CELL_WIDTH / 2
+        my = constants.CELL_HEIGHT / 2
+        marker_font = constants.FONT_CURSOR_TEXT
+        marker_color = constants.COLOR_BLACK
+        align = 'center'
+        draw_text(new_surface, marker, font=marker_font, coordinates=(mx, my), text_color=marker_color, alignment=align)
 
     # SURFACE_MAIN
     SURFACE_MAIN.blit(new_surface, (new_x, new_y))
@@ -737,6 +809,26 @@ def cast_fireball():
                 game_message(f'{target.name_object} is hit by a fireball and takes {dmg} damage!')
     else:
         print('cast lightning cancelled.')
+
+
+def cast_confusion():
+
+    # select tile
+    origin_tile = (PLAYER.x, PLAYER.y)
+
+    # get target
+    target_tile = menu_tile_select()
+    if target_tile:
+        tx, ty = target_tile
+        target = map_check_for_creature(tx, ty)
+
+        # temporarily confuse the target
+        if target:
+            o_ai = target.ai
+            target.ai = AIConfuse(old_ai=o_ai, num_turns=5)
+            target.ai.owner = target
+
+            game_message("The creature's eyes glaze over", constants.COLOR_GREEN)
 
 
 # .___  ___.  _______ .__   __.  __    __       _______.
@@ -902,7 +994,10 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
         # draw rectangle at mouse position on top of game
         if len(list_of_tiles) > 1:
             for tile in list_of_tiles[1:]:
-                draw_tile_rect(tile)
+                if tile == list_of_tiles[-1]:
+                    draw_tile_rect(tile, marker='X')
+                else:
+                    draw_tile_rect(tile)
 
         if radius:
             area_of_effect = map_find_radius(list_of_tiles[-1], radius)
@@ -910,7 +1005,7 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
                 draw_tile_rect((x, y), tile_color=constants.COLOR_RED)
 
         else:
-            draw_tile_rect((map_coordinates_x, map_coordinates_y))
+            draw_tile_rect((map_coordinates_x, map_coordinates_y), marker='X')
 
         pygame.display.flip()
         CLOCK.tick(constants.GAME_FPS)
@@ -990,13 +1085,13 @@ def game_initialize():
     # Enemy 1
     i1 = ComponentItem(use_function=cast_heal, value=5)
     c2 = ComponentCreature('Jack', death_function=death_monster)
-    ai1 = AITest()
+    ai1 = AIChase()
     enemy = ObjActor(15, 15, 'Lobster', ASSETS.A_ENEMY, animation_speed=1, creature=c2, ai=ai1, item=i1)
 
     # Enemy 2
     i2 = ComponentItem(use_function=cast_heal, value=5)
     c3 = ComponentCreature('Bob', death_function=death_monster)
-    ai2 = AITest()
+    ai2 = AIChase()
     enemy2 = ObjActor(14, 15, 'Fake Crab', ASSETS.A_ENEMY, animation_speed=1, creature=c3, ai=ai2, item=i2)
 
     GAME.current_objects = [PLAYER, enemy, enemy2]
@@ -1053,7 +1148,7 @@ def game_handle_keys():
                 menu_inventory()
             # Casts spell by pressing the "l" key
             if event.key == pygame.K_l:
-                cast_fireball()
+                cast_confusion()
 
     return 'no-action'
 

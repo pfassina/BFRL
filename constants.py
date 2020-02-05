@@ -22,6 +22,7 @@ COLOR_BLACK = (0, 0, 0)
 COLOR_WHITE = (255, 255, 255)
 COLOR_GREY = (100, 100, 100)
 COLOR_RED = (255, 0, 0)
+COLOR_GREEN = (0, 255, 0)
 
 # Game colors
 COLOR_DEFAULT_BG = COLOR_GREY
@@ -37,3 +38,4 @@ FOV_ALGORITHM = tcod.FOV_BASIC
 # Fonts
 FONT_DEBUG_MESSAGE = pygame.font.Font('data/joystix.ttf', 16)
 FONT_MESSAGE_TEXT = pygame.font.Font('data/joystix.ttf', 12)
+FONT_CURSOR_TEXT = pygame.font.Font('data/joystix.ttf', CELL_HEIGHT)
