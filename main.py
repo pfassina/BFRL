@@ -37,6 +37,7 @@ class StructureAssets:
         # Sprite Sheets
         char_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
         enemies_sprite_sheet = ObjectSpriteSheet('data/aquatic_creatures.png')
+        items_sprite_sheet = ObjectSpriteSheet('data/scroll.png')
         
         # Animations
         self.A_PLAYER = char_sprite_sheet.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
@@ -56,6 +57,10 @@ class StructureAssets:
 
         self.S_SWORD = [pygame.transform.scale(sword_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
         self.S_SHIELD = [pygame.transform.scale(shield_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
+
+        self.S_SCROLL_01 = items_sprite_sheet.get_animation('d', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_02 = items_sprite_sheet.get_animation('b', 1, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_03 = items_sprite_sheet.get_animation('c', 5, width=16, height=16, num_sprites=1, scale=(32, 32))
 
 
 #   ______   .______          __   _______   ______ .___________.    _______.
@@ -537,6 +542,7 @@ class AIChase:
             elif PLAYER.creature.hp > 0:
                 monster.creature.attack(PLAYER)
 
+
 #  _______   _______     ___   .___________. __    __
 # |       \ |   ____|   /   \  |           ||  |  |  |
 # |  .--.  ||  |__     /  ^  \ `---|  |----`|  |__|  |
@@ -792,8 +798,8 @@ def draw_tile_rect(coordinates, tile_color=None, tile_alpha=150, marker=None):
     new_surface.set_alpha(tile_alpha)
 
     if marker:
-        mx = constants.CELL_WIDTH / 2
-        my = constants.CELL_HEIGHT / 2
+        mx = int(round(constants.CELL_WIDTH / 2))
+        my = int(round(constants.CELL_HEIGHT / 2))
         marker_font = constants.FONT_CURSOR_TEXT
         marker_color = constants.COLOR_BLACK
         align = 'center'
@@ -873,14 +879,13 @@ def cast_heal(target, value):
         return None
 
 
-def cast_lightning():
+def cast_lightning(caster, value):
 
-    damage = 5
-    max_range = 5
+    spell_range, spell_range = value
 
     # prompt player for a tile
-    origin_tile = (PLAYER.x, PLAYER.y)
-    target_tile = menu_tile_select(origin_tile, max_range=max_range, ignore_walls=False)
+    origin_tile = (caster.x, caster.y)
+    target_tile = menu_tile_select(origin_tile, max_range=spell_range, ignore_walls=False)
 
     # convert that tile into a list of tiles between player and target
     if target_tile:
@@ -890,37 +895,36 @@ def cast_lightning():
         for x, y in list_of_tiles[1:]:
             target = map_check_for_creature(x, y)
             if target:
-                target.creature.take_damage(damage)
-                game_message(f'{target.creature.name_instance} is hit by a lightning bolt and takes {damage} damage!')
+                target.creature.take_damage(spell_range)
+                game_message(f'{target.creature.name_instance} is hit by a lightning bolt and takes {spell_range} damage!')
     else:
         print('cast lightning cancelled.')
 
 
-def cast_fireball():
+def cast_fireball(caster, value):
 
-    dmg = 5
-    rd = 1
-    rg = 4
+    spell_damage, spell_radius, spell_range = value
 
     # Get target tile
-    origin_tile = (PLAYER.x, PLAYER.y)
-    target_tile = menu_tile_select(origin_tile, max_range=rg, ignore_walls=False, ignore_creatures=False, radius=rd)
+    origin_tile = (caster.x, caster.y)
+    target_tile = menu_tile_select(origin_tile, max_range=spell_range, ignore_walls=False, ignore_creatures=False,
+                                   radius=spell_radius)
 
     # get sequence of tiles
     if target_tile:
-        list_of_tiles = map_find_radius(target_tile, rd)
+        list_of_tiles = map_find_radius(target_tile, spell_radius)
 
         # damage all creatures in tiles
         for x, y in list_of_tiles:
             target = map_check_for_creature(x, y)
             if target:
-                target.creature.take_damage(dmg)
-                game_message(f'{target.name_object} is hit by a fireball and takes {dmg} damage!')
+                target.creature.take_damage(spell_damage)
+                game_message(f'{target.name_object} is hit by a fireball and takes {spell_damage} damage!')
     else:
         print('cast lightning cancelled.')
 
 
-def cast_confusion():
+def cast_confusion(caster, effect_length):
 
     # get target
     target_tile = menu_tile_select()
@@ -931,7 +935,7 @@ def cast_confusion():
         # temporarily confuse the target
         if target:
             o_ai = target.ai
-            target.ai = AIConfuse(old_ai=o_ai, num_turns=5)
+            target.ai = AIConfuse(old_ai=o_ai, num_turns=effect_length)
             target.ai.owner = target
 
             game_message(f"{target.display_name} is confused. The creature's eyes glaze over", constants.COLOR_GREEN)
@@ -1035,6 +1039,8 @@ def menu_inventory():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1 and mouse_in_window and mouse_line_selection <= len(item_list):
                     PLAYER.container.inventory[mouse_line_selection].item.use()
+                    # TODO keep inventory open if item is an equipment
+                    menu_close = True
 
         # Draw item list
         for line, name in enumerate(item_list):
@@ -1121,6 +1127,94 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
         CLOCK.tick(constants.GAME_FPS)
 
 
+#   _______  _______ .__   __.  _______ .______          ___   .___________.  ______   .______          _______.
+#  /  _____||   ____||  \ |  | |   ____||   _  \        /   \  |           | /  __  \  |   _  \        /       |
+# |  |  __  |  |__   |   \|  | |  |__   |  |_)  |      /  ^  \ `---|  |----`|  |  |  | |  |_)  |      |   (----`
+# |  | |_ | |   __|  |  . `  | |   __|  |      /      /  /_\  \    |  |     |  |  |  | |      /        \   \
+# |  |__| | |  |____ |  |\   | |  |____ |  |\  \----./  _____  \   |  |     |  `--'  | |  |\  \----.----)   |
+#  \______| |_______||__| \__| |_______|| _| `._____/__/     \__\  |__|      \______/  | _| `._____|_______/
+#
+
+
+def gen_item(coordinates):
+
+    random_num = tcod.random_get_int(None, 1, 5)
+
+    generator_dict = {
+        1: gen_scroll_lightning(coordinates),
+        2: gen_scroll_fireball(coordinates),
+        3: gen_scroll_confusion(coordinates),
+        4: gen_weapon_sword(coordinates),
+        5: gen_armor_shield(coordinates),
+    }
+
+    item = generator_dict[random_num]
+    GAME.current_objects.append(item)
+
+
+def gen_scroll_lightning(coordinates):
+
+    x, y = coordinates
+
+    spell_damage = tcod.random_get_int(None, 5, 7)
+    spell_range = tcod.random_get_int(None, 7, 8)
+
+    item_component = ComponentItem(use_function=cast_lightning, value=(spell_damage, spell_range))
+    scroll = ObjActor(x, y, "Lightning scroll", ASSETS.S_SCROLL_01, item=item_component)
+
+    return scroll
+
+
+def gen_scroll_fireball(coordinates):
+
+    x, y = coordinates
+
+    spell_damage = tcod.random_get_int(None, 2, 4)
+    spell_radius = 1
+    spell_range = tcod.random_get_int(None, 9, 12)
+
+    item_component = ComponentItem(use_function=cast_fireball, value=(spell_damage, spell_radius, spell_range))
+    scroll = ObjActor(x, y, "Fireball scroll", ASSETS.S_SCROLL_02, item=item_component)
+
+    return scroll
+
+
+def gen_scroll_confusion(coordinates):
+
+    x, y = coordinates
+
+    effect_length = tcod.random_get_int(None, 5, 10)
+
+    item_component = ComponentItem(use_function=cast_confusion, value=effect_length)
+    scroll = ObjActor(x, y, "Confusion scroll", ASSETS.S_SCROLL_03, item=item_component)
+
+    return scroll
+
+
+def gen_weapon_sword(coordinates):
+
+    x, y = coordinates
+
+    bonus = tcod.random_get_int(None, 1, 2)
+
+    equipment_component = ComponentEquipment(attack_bonus=bonus)
+    sword = ObjActor(x, y, "sword", ASSETS.S_SWORD, equipment=equipment_component)
+
+    return sword
+
+
+def gen_armor_shield(coordinates):
+
+    x, y = coordinates
+
+    bonus = tcod.random_get_int(None, 1, 2)
+
+    equipment_component = ComponentEquipment(defense_bonus=bonus)
+    shield = ObjActor(x, y, "shield", ASSETS.S_SHIELD, equipment=equipment_component)
+
+    return shield
+
+
 #   _______      ___      .___  ___.  _______
 #  /  _____|    /   \     |   \/   | |   ____|
 # |  |  __     /  ^  \    |  \  /  | |  |__
@@ -1204,19 +1298,13 @@ def game_initialize():
     ai2 = AIChase()
     enemy2 = ObjActor(14, 15, 'Fake Crab', ASSETS.A_ENEMY, animation_speed=1, creature=c3, ai=ai2, item=i2)
 
-    # create a sword
-    e1 = ComponentEquipment(attack_bonus=2, slot='hand_right')
-    sword = ObjActor(2, 2, 'Short-sword', ASSETS.S_SWORD, equipment=e1)
+    # Create scrolls
+    gen_item((2, 2))
+    gen_item((2, 3))
+    gen_item((2, 4))
 
-    # create a shield
-    e2 = ComponentEquipment(defense_bonus=2, slot='hand_left')
-    shield = ObjActor(2, 3, 'Shield', ASSETS.S_SHIELD, equipment=e2)
-
-    # create a sword
-    e3 = ComponentEquipment(attack_bonus=2, slot='hand_right')
-    sword2 = ObjActor(3, 2, 'Short-sword', ASSETS.S_SWORD, equipment=e3)
-
-    GAME.current_objects = [PLAYER, enemy, enemy2, sword, shield, sword2]
+    for i in [PLAYER, enemy, enemy2]:
+        GAME.current_objects.append(i)
 
 
 def game_handle_keys():
