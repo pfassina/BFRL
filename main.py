@@ -1197,7 +1197,7 @@ def gen_weapon_sword(coordinates):
 
     bonus = tcod.random_get_int(None, 1, 2)
 
-    equipment_component = ComponentEquipment(attack_bonus=bonus)
+    equipment_component = ComponentEquipment(attack_bonus=bonus, slot='hand_right')
     sword = ObjActor(x, y, "sword", ASSETS.S_SWORD, equipment=equipment_component)
 
     return sword
@@ -1209,7 +1209,7 @@ def gen_armor_shield(coordinates):
 
     bonus = tcod.random_get_int(None, 1, 2)
 
-    equipment_component = ComponentEquipment(defense_bonus=bonus)
+    equipment_component = ComponentEquipment(defense_bonus=bonus, slot='left_right')
     shield = ObjActor(x, y, "shield", ASSETS.S_SHIELD, equipment=equipment_component)
 
     return shield
