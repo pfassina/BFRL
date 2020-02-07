@@ -1,6 +1,7 @@
 import tcod
 import pygame
 import math
+import numpy as np
 
 import constants
 
@@ -33,15 +34,17 @@ class StructureAssets:
     """
 
     def __init__(self):
-        
+
         # Sprite Sheets
-        char_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
-        enemies_sprite_sheet = ObjectSpriteSheet('data/aquatic_creatures.png')
-        items_sprite_sheet = ObjectSpriteSheet('data/scroll.png')
-        
+        self.char_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
+        self.enemies_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
+        self.items_sprite_sheet = ObjectSpriteSheet('data/scroll.png')
+        self.flesh_sprite_sheet = ObjectSpriteSheet('data/flesh.png')
+
         # Animations
-        self.A_PLAYER = char_sprite_sheet.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
-        self.A_ENEMY = enemies_sprite_sheet.get_animation('k', 1, width=16, height=16, num_sprites=2, scale=(32, 32))
+        self.A_PLAYER = self.char_sprite_sheet.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
+        self.A_SNAKE_01 = self.enemies_sprite_sheet.get_animation('e', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
+        self.A_SNAKE_02 = self.enemies_sprite_sheet.get_animation('k', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
 
         # Sprites
         self.S_WALL = pygame.image.load('data/wall.jpg')
@@ -58,9 +61,11 @@ class StructureAssets:
         self.S_SWORD = [pygame.transform.scale(sword_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
         self.S_SHIELD = [pygame.transform.scale(shield_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
 
-        self.S_SCROLL_01 = items_sprite_sheet.get_animation('d', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_SCROLL_02 = items_sprite_sheet.get_animation('b', 1, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_SCROLL_03 = items_sprite_sheet.get_animation('c', 5, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_01 = self.items_sprite_sheet.get_animation('d', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_02 = self.items_sprite_sheet.get_animation('b', 1, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_03 = self.items_sprite_sheet.get_animation('c', 5, width=16, height=16, num_sprites=1, scale=(32, 32))
+
+        self.S_FLESH_01 = self.flesh_sprite_sheet.get_animation('a', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
 
 
 #   ______   .______          __   _______   ______ .___________.    _______.
@@ -196,10 +201,8 @@ class ObjectGame:
     """
 
     def __init__(self):
-        
-        self.current_map = map_create()
+
         self.current_objects = []
-        
         self.message_history = []
 
 
@@ -283,6 +286,32 @@ class ObjectSpriteSheet:
             sprite_list.append(image)
 
         return sprite_list
+
+
+class ObjectRoom:
+    """
+    This is a rectangle room that lives on the map.
+    """
+
+    def __init__(self, coordinates, size):
+
+        self.x1, self.y1 = coordinates
+        self.w, self.h = size
+        self.x2 = self.x1 + self.w
+        self.y2 = self.y1 + self.h
+
+    @property
+    def center(self):
+        center_x = int(round((self.x1 + self.x2)/2))
+        center_y = int(round((self.y1 + self.y2)/2))
+        return center_x, center_y
+
+    def intercept(self, other):
+
+        x_overlap = self.x1 <= other.x2 and self.x2 >= other.x1
+        y_overlap = self.y1 <= other.y2 and self.y2 >= other.y1
+        return x_overlap and y_overlap
+
 
 
 #   ______   ______   .___  ___. .______     ______   .__   __.  _______ .__   __. .___________.    _______.
@@ -560,6 +589,7 @@ def death_monster(monster):
 
     message = f'{monster.creature.name_instance} is dead!'
     game_message(message, constants.COLOR_GREY)
+    monster.animation = ASSETS.S_FLESH_01
     monster.creature = None
     monster.ai = None
 
@@ -574,22 +604,67 @@ def death_monster(monster):
 
 def map_create():
 
-    new_map = [[StructureTile(False) for y in range(0, constants.MAP_HEIGHT)] for x in range(0, constants.MAP_WIDTH)]
+    # Create a map of Height by Width dimensions
+    new_map = [[StructureTile(True) for y in range(0, constants.MAP_HEIGHT)] for x in range(0, constants.MAP_WIDTH)]
 
-    new_map[10][10].block_path = True
-    new_map[10][15].block_path = True
+    # Generate new room
+    list_of_rooms = []
+    for room in range(constants.MAP_MAX_NUM_ROOMS):
 
-    for x in range(constants.MAP_WIDTH):
-        new_map[x][0].block_path = True
-        new_map[x][constants.MAP_HEIGHT - 1].block_path = True
+        w = tcod.random_get_int(None, constants.ROOM_MIN_WIDTH, constants.ROOM_MAX_WIDTH)
+        h = tcod.random_get_int(None, constants.ROOM_MIN_HEIGHT, constants.ROOM_MAX_HEIGHT)
 
-    for y in range(constants.MAP_HEIGHT):
-        new_map[0][y].block_path = True
-        new_map[constants.MAP_HEIGHT - 1][y].block_path = True
+        x = tcod.random_get_int(None, 2, constants.MAP_WIDTH - w - 2)
+        y = tcod.random_get_int(None, 2, constants.MAP_HEIGHT - h - 2)
+
+        new_room = ObjectRoom((x, y), (w, h))
+
+        # Check for interference
+        failed = False
+        for other_room in list_of_rooms:
+            if new_room.intercept(other_room):
+                failed = True
+
+        # Place the room
+        if not failed:
+            map_create_room(new_map, new_room)
+
+            if len(list_of_rooms) == 0:
+                gen_player(new_room.center)
+
+            # Dig the tunnels
+            else:
+                other_room = list_of_rooms[-1]
+                map_create_tunnel(new_map, new_room.center, other_room.center)
+
+            list_of_rooms.append(new_room)
 
     map_make_fov(new_map)
 
     return new_map
+
+
+def map_create_room(new_map, room):
+    for x in range(room.x1, room.x2):
+        for y in range(room.y1, room.y2):
+            new_map[x][y].block_path = False
+
+
+def map_create_tunnel(new_map, room1, room2):
+
+    x1, y1 = room1
+    x2, y2 = room2
+
+    if coin_flip:
+        for x in range(min(x1, x2), max(x1, x2) + 1):
+            new_map[x][y1].block_path = False
+        for y in range(min(y1, y2), max(y1, y2) + 1):
+            new_map[x2][y].block_path = False
+    else:
+        for y in range(min(y1, y2), max(y1, y2) + 1):
+            new_map[y][x1].block_path = False
+        for x in range(min(x1, x2), max(x1, x2) + 1):
+            new_map[x][y2].block_path = False
 
 
 def map_check_for_creature(x, y, exclude_object=None):
@@ -1127,6 +1202,17 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
         CLOCK.tick(constants.GAME_FPS)
 
 
+#  _______   ______   .______     .___________. __    __  .__   __.  _______
+# |   ____| /  __  \  |   _  \    |           ||  |  |  | |  \ |  | |   ____|
+# |  |__   |  |  |  | |  |_)  |   `---|  |----`|  |  |  | |   \|  | |  |__
+# |   __|  |  |  |  | |      /        |  |     |  |  |  | |  . `  | |   __|
+# |  |     |  `--'  | |  |\  \----.   |  |     |  `--'  | |  |\   | |  |____
+# |__|      \______/  | _| `._____|   |__|      \______/  |__| \__| |_______|
+#
+
+@property
+def coin_flip(): return np.random.choice([True, False])
+
 #   _______  _______ .__   __.  _______ .______          ___   .___________.  ______   .______          _______.
 #  /  _____||   ____||  \ |  | |   ____||   _  \        /   \  |           | /  __  \  |   _  \        /       |
 # |  |  __  |  |__   |   \|  | |  |__   |  |_)  |      /  ^  \ `---|  |----`|  |  |  | |  |_)  |      |   (----`
@@ -1136,17 +1222,33 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
 #
 
 
+def gen_player(coordinates):
+
+    global PLAYER
+
+    x, y = coordinates
+
+    bag = ComponentContainer()
+    creature_component = ComponentCreature('Greg', base_attack=4)
+
+    PLAYER = ObjActor(x, y, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_component, container=bag)
+    GAME.current_objects.append(PLAYER)
+
+    return PLAYER
+
+
 def gen_item(coordinates):
 
-    random_num = tcod.random_get_int(None, 1, 5)
-
     generator_dict = {
-        1: gen_scroll_lightning(coordinates),
-        2: gen_scroll_fireball(coordinates),
-        3: gen_scroll_confusion(coordinates),
-        4: gen_weapon_sword(coordinates),
-        5: gen_armor_shield(coordinates),
+        0: gen_scroll_lightning(coordinates),
+        1: gen_scroll_fireball(coordinates),
+        2: gen_scroll_confusion(coordinates),
+        3: gen_weapon_sword(coordinates),
+        4: gen_armor_shield(coordinates),
     }
+
+    # generate random item with equal probability
+    random_num = np.random.randint(0, len(generator_dict))
 
     item = generator_dict[random_num]
     GAME.current_objects.append(item)
@@ -1155,6 +1257,7 @@ def gen_item(coordinates):
 def gen_scroll_lightning(coordinates):
 
     x, y = coordinates
+
 
     spell_damage = tcod.random_get_int(None, 5, 7)
     spell_range = tcod.random_get_int(None, 7, 8)
@@ -1215,6 +1318,51 @@ def gen_armor_shield(coordinates):
     return shield
 
 
+def gen_enemy(coordinates):
+
+    generator_dict = {
+        0: gen_snake_anaconda(coordinates),
+        1: gen_snake_cobra(coordinates),
+    }
+
+    # Generate Random Snake based on p probability weights
+    random_num = np.random.choice(len(generator_dict), p=[0.7, 0.3])
+
+    enemy = generator_dict[random_num]
+    GAME.current_objects.append(enemy)
+
+
+def gen_snake_anaconda(coordinates):
+
+    x, y = coordinates
+
+    attack = tcod.random_get_int(None, 1, 2)
+    health = tcod.random_get_int(None, 5, 10)
+
+    name = tcod.namegen_generate('Celtic female')
+
+    creature_component = ComponentCreature(name_instance=name, base_attack=attack, hp=health, death_function=death_monster)
+    snake_ai = AIChase()
+    anaconda = ObjActor(x, y, 'anaconda', ASSETS.A_SNAKE_01, animation_speed=1, creature=creature_component, ai=snake_ai)
+
+    return anaconda
+
+
+def gen_snake_cobra(coordinates):
+
+    x, y = coordinates
+
+    attack = tcod.random_get_int(None, 3, 6)
+    health = tcod.random_get_int(None, 15, 20)
+
+    name = tcod.namegen_generate('Celtic male')
+
+    creature_component = ComponentCreature(name_instance=name, base_attack=attack, hp=health, death_function=death_monster)
+    snake_ai = AIChase()
+    cobra = ObjActor(x, y, 'cobra', ASSETS.A_SNAKE_02, animation_speed=1, creature=creature_component, ai=snake_ai)
+
+    return cobra
+
 #   _______      ___      .___  ___.  _______
 #  /  _____|    /   \     |   \/   | |   ____|
 # |  |  __     /  ^  \    |  \  /  | |  |__
@@ -1266,45 +1414,31 @@ def game_initialize():
     # initialize pygame
     pygame.init()
     pygame.key.set_repeat(200, 70)
+    tcod.namegen_parse('data/celtic.cfg')
 
+    # create display surface with a given Height, and Width
     SURFACE_MAIN = pygame.display.set_mode((
             constants.MAP_WIDTH * constants.CELL_WIDTH,
             constants.MAP_HEIGHT * constants.CELL_HEIGHT
         ))
 
-    GAME = ObjectGame()
-
-    CLOCK = pygame.time.Clock()
-
-    FOV_CALCULATE = True
-    
+    # start the game object
     ASSETS = StructureAssets()
+    GAME = ObjectGame()
+    GAME.current_map = map_create()
+    CLOCK = pygame.time.Clock()
+    FOV_CALCULATE = True
 
-    # Temporary Creature Creation
-    # Player
-    ctn = ComponentContainer()
-    c1 = ComponentCreature('Greg', base_attack=4)
-    PLAYER = ObjActor(1, 1, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=c1, container=ctn)
+    # # Create 3 items
+    # gen_item((2, 2))
+    # gen_item((2, 3))
+    # gen_item((2, 4))
+    #
+    # # create 2 enemies
+    #
+    # gen_enemy((15, 15))
+    # gen_enemy((15, 16))
 
-    # Enemy 1
-    i1 = ComponentItem(use_function=cast_heal, value=5)
-    c2 = ComponentCreature('Jack', death_function=death_monster)
-    ai1 = AIChase()
-    enemy = ObjActor(15, 15, 'Lobster', ASSETS.A_ENEMY, animation_speed=1, creature=c2, ai=ai1, item=i1)
-
-    # Enemy 2
-    i2 = ComponentItem(use_function=cast_heal, value=5)
-    c3 = ComponentCreature('Bob', death_function=death_monster)
-    ai2 = AIChase()
-    enemy2 = ObjActor(14, 15, 'Fake Crab', ASSETS.A_ENEMY, animation_speed=1, creature=c3, ai=ai2, item=i2)
-
-    # Create scrolls
-    gen_item((2, 2))
-    gen_item((2, 3))
-    gen_item((2, 4))
-
-    for i in [PLAYER, enemy, enemy2]:
-        GAME.current_objects.append(i)
 
 
 def game_handle_keys():
@@ -1356,9 +1490,9 @@ def game_handle_keys():
             # Opens the inventory menu by pressing the "i" key
             if event.key == pygame.K_i:
                 menu_inventory()
-            # Casts spell by pressing the "l" key
+            # Open look menu by pressing the "l" key
             if event.key == pygame.K_l:
-                cast_confusion()
+                menu_tile_select()
 
     return 'no-action'
 
