@@ -204,6 +204,7 @@ class ObjectGame:
 
         self.current_objects = []
         self.message_history = []
+        self.current_map = None
 
 
 class ObjectSpriteSheet:
@@ -311,7 +312,6 @@ class ObjectRoom:
         x_overlap = self.x1 <= other.x2 and self.x2 >= other.x1
         y_overlap = self.y1 <= other.y2 and self.y2 >= other.y1
         return x_overlap and y_overlap
-
 
 
 #   ______   ______   .___  ___. .______     ______   .__   __.  _______ .__   __. .___________.    _______.
@@ -563,7 +563,7 @@ class AIChase:
     def take_turn(self):
 
         monster = self.owner
-        if FOV_MAP.fov[monster.x, monster.y]:
+        if FOV_MAP.fov[monster.y, monster.x]:
             # Moves towards the player if far away
             if monster.distance_to(PLAYER) >= 2:
                 monster.move_towards(PLAYER)
@@ -641,7 +641,7 @@ def map_create():
 
     map_make_fov(new_map)
 
-    return new_map
+    return new_map, list_of_rooms
 
 
 def map_create_room(new_map, room):
@@ -665,6 +665,25 @@ def map_create_tunnel(new_map, room1, room2):
             new_map[y][x1].block_path = False
         for x in range(min(x1, x2), max(x1, x2) + 1):
             new_map[x][y2].block_path = False
+
+
+def map_place_objects(room_list):
+
+    for room in room_list:
+
+        # Place a random enemy
+        # x = roll_dice(start=room.x1 + 1, sides=room.x2 - 1)
+        # y = roll_dice(start=room.y1 + 1, sides=room.y2 - 1)
+
+        x = tcod.random_get_int(None, room.x1 + 1, room.x2 - 1)
+        y = tcod.random_get_int(None, room.y1 + 1, room.y2 - 1)
+        gen_enemy((x, y))
+
+        # Place a random item
+        x = tcod.random_get_int(None, room.x1 + 1, room.x2 - 1)
+        y = tcod.random_get_int(None, room.y1 + 1, room.y2 - 1)
+
+        gen_item((x, y))
 
 
 def map_check_for_creature(x, y, exclude_object=None):
@@ -950,7 +969,7 @@ def cast_heal(target, value):
     else:
         target.creature.heal(value)
         heal_value = min(value, target.creature.max_hp - value)
-        game_message(f'{target.creature.name_instance} the {target.name_object} healed for {heal_value} health.')
+        game_message(f'{target.display_name}  healed for {heal_value} health.')
         return None
 
 
@@ -970,8 +989,8 @@ def cast_lightning(caster, value):
         for x, y in list_of_tiles[1:]:
             target = map_check_for_creature(x, y)
             if target:
+                game_message(f'{target.display_name} is hit by a lightning bolt and takes {spell_range} damage!')
                 target.creature.take_damage(spell_range)
-                game_message(f'{target.creature.name_instance} is hit by a lightning bolt and takes {spell_range} damage!')
     else:
         print('cast lightning cancelled.')
 
@@ -993,8 +1012,8 @@ def cast_fireball(caster, value):
         for x, y in list_of_tiles:
             target = map_check_for_creature(x, y)
             if target:
+                game_message(f'{target.display_name} is hit by a fireball and takes {spell_damage} damage!')
                 target.creature.take_damage(spell_damage)
-                game_message(f'{target.name_object} is hit by a fireball and takes {spell_damage} damage!')
     else:
         print('cast lightning cancelled.')
 
@@ -1213,6 +1232,10 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
 @property
 def coin_flip(): return np.random.choice([True, False])
 
+
+def roll_dice(sides, rolls=None, start=1): return np.random.choice(range(start, sides), size=rolls)
+
+
 #   _______  _______ .__   __.  _______ .______          ___   .___________.  ______   .______          _______.
 #  /  _____||   ____||  \ |  | |   ____||   _  \        /   \  |           | /  __  \  |   _  \        /       |
 # |  |  __  |  |__   |   \|  | |  |__   |  |_)  |      /  ^  \ `---|  |----`|  |  |  | |  |_)  |      |   (----`
@@ -1425,7 +1448,8 @@ def game_initialize():
     # start the game object
     ASSETS = StructureAssets()
     GAME = ObjectGame()
-    GAME.current_map = map_create()
+    GAME.current_map, GAME.current_rooms = map_create()
+    map_place_objects(GAME.current_rooms)
     CLOCK = pygame.time.Clock()
     FOV_CALCULATE = True
 
@@ -1438,7 +1462,6 @@ def game_initialize():
     #
     # gen_enemy((15, 15))
     # gen_enemy((15, 16))
-
 
 
 def game_handle_keys():
