@@ -1,8 +1,12 @@
-import tcod
-import pygame
+# modules
+import gzip
 import math
 import numpy as np
+import pickle
+import pygame
+import tcod
 
+# game files
 import constants
 
 #      _______.___________..______       __    __    ______ .___________.
@@ -67,6 +71,29 @@ class StructureAssets:
 
         self.S_FLESH_01 = self.ss_flesh.get_animation('a', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
 
+    def sprite(self, key):
+        animation_dict = {
+            # creatures
+            'A_PLAYER': self.A_PLAYER,
+            'A_SNAKE_01': self.A_SNAKE_01,
+            'A_SNAKE_02': self.A_SNAKE_02,
+
+            # structures
+            'S_WALL': self.S_WALL,
+            'S_WALL_EXPLORED': self.S_WALL_EXPLORED,
+            'S_FLOOR': self.S_FLOOR,
+            'S_FLOOR_EXPLORED': self.S_FLOOR_EXPLORED,
+
+            # items
+            'S_SWORD': self.S_SWORD,
+            'S_SHIELD': self.S_SHIELD,
+            'S_SCROLL_01': self.S_SCROLL_01,
+            'S_SCROLL_02': self.S_SCROLL_02,
+            'S_SCROLL_03': self.S_SCROLL_03,
+            'S_FLESH_01': self.S_FLESH_01,
+        }
+        return animation_dict[key]
+
 
 #   ______   .______          __   _______   ______ .___________.    _______.
 #  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
@@ -89,13 +116,13 @@ class ObjActor:
     ** METHODS **
     obj_Actor.draw() : this method draws the object to the screen.
     """
-    def __init__(self, x, y, name_object, animation, animation_speed=0.5,
+    def __init__(self, x, y, name_object, animation_key, animation_speed=0.5,
                  creature=None, ai=None, container=None, item=None, equipment=None):
         """
         :param x: starting x position on the current map
         :param y: starting y position on the current map
         :param name_object: string containing the name of the object, "chair" or "goblin" for example.
-        :param animation: A list of images that make up the object's sprite sheet. Created with StructureAssets class.
+        :param animation_key: A list of images that make up the object's sprite sheet. Created with StructureAssets class.
         :param animation_speed: Time in seconds it takes to loop through the object animation.
         :param creature: any object that has health, and generally can fight
         :param ai: ai is a component that executes an action every time the object is able to act
@@ -108,7 +135,9 @@ class ObjActor:
 
         self.name_object = name_object
 
-        self.animation = animation
+        self.animation_key = animation_key
+        self.animation = ASSETS.sprite(self.animation_key)
+
         self.animation_speed = animation_speed / 1.0
 
         # animation flicker speed
@@ -212,6 +241,10 @@ class ObjectGame:
 
         global FOV_CALCULATE
 
+        # destroy surfaces to allow game save
+        for obj in self.current_objects:
+            obj.animation = None
+
         # save current map to previous maps
         self.maps_previous.append((PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects))
 
@@ -220,6 +253,9 @@ class ObjectGame:
             # clear current_objects list
             self.current_objects = [PLAYER]
 
+            # add Sprite back to Player
+            PLAYER.animation = ASSETS.sprite(PLAYER.animation_key)
+
             # create new map and place objects
             self.current_map, self.current_rooms = map_create()
             map_place_objects(self.current_rooms)
@@ -227,6 +263,10 @@ class ObjectGame:
         else:
             # load next map
             PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects = self.maps_next.pop(-1)
+
+            # load destroyed surfaces
+            for obj in self.current_objects:
+                obj.animation = ASSETS.sprite(obj.animation_key)
 
             # calculate FOV
             map_make_fov(self.current_map)
@@ -238,11 +278,19 @@ class ObjectGame:
 
         if len(self.maps_previous) > 0:
 
+            # destroy surfaces to allow game save
+            for obj in self.current_objects:
+                obj.animation = None
+
             # save current map to next maps
             self.maps_next.append((PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects))
 
             # load last map
             PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects = self.maps_previous.pop(-1)
+
+            # load destroyed surfaces on previous map
+            for obj in self.current_objects:
+                obj.animation = ASSETS.sprite(obj.animation_key)
 
             # calculate fov
             map_make_fov(self.current_map)
@@ -562,22 +610,42 @@ class ComponentItem:
         self.volume = volume
         self.use_function = use_function
         self.value = value
+        self.container = None
 
     def pick_up(self, actor):
+
+        # check if actor container can hold the item
         if actor.container:
             if actor.container.volume + self.volume > actor.container.max_volume:
                 game_message('Not enough room to pick up', color=constants.COLOR_RED)
             else:
                 game_message('Picking up')
+                # add item to actor inventory
                 actor.container.inventory.append(self.owner)
+                # remove animation for game save
+                self.owner.animation = None
+
+                # remove item from game
                 GAME.current_objects.remove(self.owner)
+
+                # assigns container ownership to actor's container
                 self.container = actor.container
 
     def drop(self, new_x, new_y):
+
+        # add item to game objects
         GAME.current_objects.append(self.owner)
+
+        # load item animation
+        self.owner.animation = ASSETS.sprite(self.owner.animation_key)
+
+        # remove item from actor container
         self.container.inventory.remove(self.owner)
+
+        # drop item at actor position
         self.owner.x = new_x
         self.owner.y = new_y
+
         game_message('Item dropped!')
 
     def use(self):
@@ -691,7 +759,8 @@ def death_monster(monster):
 
     message = f'{monster.creature.name_instance} is dead!'
     game_message(message, constants.COLOR_GREY)
-    monster.animation = ASSETS.S_FLESH_01
+    monster.animation_key = 'S_FLESH_01'
+    monster.animation = ASSETS.sprite('S_FLESH_01')
     monster.creature = None
     monster.ai = None
 
@@ -1394,7 +1463,7 @@ def gen_player(coordinates):
     bag = ComponentContainer()
     creature_component = ComponentCreature('Greg', base_attack=4)
 
-    PLAYER = ObjActor(x, y, 'Python', ASSETS.A_PLAYER, animation_speed=1, creature=creature_component, container=bag)
+    PLAYER = ObjActor(x, y, 'Python', 'A_PLAYER', animation_speed=1, creature=creature_component, container=bag)
     GAME.current_objects.append(PLAYER)
 
     return PLAYER
@@ -1425,7 +1494,7 @@ def gen_scroll_lightning(coordinates):
     spell_range = tcod.random_get_int(None, 7, 8)
 
     item_component = ComponentItem(use_function=cast_lightning, value=(spell_damage, spell_range))
-    scroll = ObjActor(x, y, "Lightning scroll", ASSETS.S_SCROLL_01, item=item_component)
+    scroll = ObjActor(x, y, "Lightning scroll", 'S_SCROLL_01', item=item_component)
 
     return scroll
 
@@ -1439,7 +1508,7 @@ def gen_scroll_fireball(coordinates):
     spell_range = tcod.random_get_int(None, 9, 12)
 
     item_component = ComponentItem(use_function=cast_fireball, value=(spell_damage, spell_radius, spell_range))
-    scroll = ObjActor(x, y, "Fireball scroll", ASSETS.S_SCROLL_02, item=item_component)
+    scroll = ObjActor(x, y, "Fireball scroll", 'S_SCROLL_02', item=item_component)
 
     return scroll
 
@@ -1451,7 +1520,7 @@ def gen_scroll_confusion(coordinates):
     effect_length = tcod.random_get_int(None, 5, 10)
 
     item_component = ComponentItem(use_function=cast_confusion, value=effect_length)
-    scroll = ObjActor(x, y, "Confusion scroll", ASSETS.S_SCROLL_03, item=item_component)
+    scroll = ObjActor(x, y, "Confusion scroll", 'S_SCROLL_03', item=item_component)
 
     return scroll
 
@@ -1463,7 +1532,7 @@ def gen_weapon_sword(coordinates):
     bonus = tcod.random_get_int(None, 1, 2)
 
     equipment_component = ComponentEquipment(attack_bonus=bonus, slot='hand_right')
-    sword = ObjActor(x, y, "sword", ASSETS.S_SWORD, equipment=equipment_component)
+    sword = ObjActor(x, y, "sword", 'S_SWORD', equipment=equipment_component)
 
     return sword
 
@@ -1474,8 +1543,8 @@ def gen_armor_shield(coordinates):
 
     bonus = tcod.random_get_int(None, 1, 2)
 
-    equipment_component = ComponentEquipment(defense_bonus=bonus, slot='left_right')
-    shield = ObjActor(x, y, "shield", ASSETS.S_SHIELD, equipment=equipment_component)
+    equipment_component = ComponentEquipment(defense_bonus=bonus, slot='hand_left')
+    shield = ObjActor(x, y, "shield", 'S_SHIELD', equipment=equipment_component)
 
     return shield
 
@@ -1509,7 +1578,7 @@ def gen_snake_anaconda(coordinates):
         'x': x,
         'y': y,
         'name_object': 'anaconda',
-        'animation': ASSETS.A_SNAKE_01,
+        'animation_key': 'A_SNAKE_01',
         'animation_speed': 1,
         'creature': ComponentCreature(**creature_attributes),
         'ai': AIChase()
@@ -1535,7 +1604,7 @@ def gen_snake_cobra(coordinates):
         'x': x,
         'y': y,
         'name_object': 'cobra',
-        'animation': ASSETS.A_SNAKE_02,
+        'animation_key': 'A_SNAKE_02',
         'animation_speed': 1,
         'creature': ComponentCreature(**creature_attributes),
         'ai': AIChase()
@@ -1566,7 +1635,7 @@ def game_main_loop():
         map_calculate_fov()
 
         if player_action == 'QUIT':
-            game_quit = True
+            game_exit()
 
         elif player_action != 'no-action':
             for obj in GAME.current_objects:
@@ -1580,10 +1649,6 @@ def game_main_loop():
         pygame.display.flip()
 
         CLOCK.tick(constants.GAME_FPS)
-
-    # quit the game
-    pygame.quit()
-    exit()
 
 
 def game_initialize():
@@ -1619,7 +1684,10 @@ def game_initialize():
     FOV_CALCULATE = True
 
     # Create a new game
-    game_new()
+    try:
+        game_load()
+    except FileNotFoundError:
+        game_new()
 
 
 def game_handle_keys():
@@ -1698,6 +1766,37 @@ def game_new():
     # Place objects on map
     map_place_objects(GAME.current_rooms)
 
+
+def game_save():
+
+    for obj in GAME.current_objects:
+        obj.animation = None
+
+    with gzip.open('savegame/savegame', 'wb') as file:
+        pickle.dump([GAME, PLAYER], file)
+
+
+def game_load():
+
+    global GAME, PLAYER
+
+    with gzip.open('savegame/savegame', 'rb') as file:
+        GAME, PLAYER = pickle.load(file)
+
+    for obj in GAME.current_objects:
+        obj.animation = ASSETS.sprite(obj.animation_key)
+
+    # make FOV
+    map_make_fov(GAME.current_map)
+
+
+def game_exit():
+
+    game_save()
+    pygame.quit()
+    exit()
+
+
 #############################################################
 ###################################################   #######
 ###############################################   /~\   #####
@@ -1719,6 +1818,7 @@ def game_new():
 #####  /                `                    ; ##############
 ###  /                                      ; ###############
 #                                            ################
+
 
 if __name__ == '__main__':
     game_initialize()
