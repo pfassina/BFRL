@@ -215,15 +215,56 @@ class ObjectCamera:
         self.height = constants.CAMERA_HEIGHT
         self.x, self.y = (0, 0)
 
-    def update(self):
-        self.x = int(round(PLAYER.x * constants.CELL_WIDTH + constants.CELL_WIDTH / 2))
-        self.y = int(round(PLAYER.y * constants.CELL_HEIGHT + constants.CELL_HEIGHT / 2))
-
     @property
     def rectangle(self):
         camera_rectangle = pygame.Rect((0, 0), (self.width, self.height))
         camera_rectangle.center = (self.x, self.y)
         return camera_rectangle
+
+    @property
+    def map_address(self):
+        map_x = int(self.x / constants.CELL_WIDTH)
+        map_y = int(self.y / constants.CELL_HEIGHT)
+
+        return map_x, map_y
+
+    def update(self):
+
+        target_x = PLAYER.x * constants.CELL_WIDTH + constants.CELL_WIDTH / 2
+        target_y = PLAYER.y * constants.CELL_HEIGHT + constants.CELL_HEIGHT / 2
+
+        distance_x, distance_y = self.map_distance((target_x, target_y))
+
+        self.x += int(distance_x)
+        self.y += int(distance_y)
+
+    def window_to_map(self, coordinates):
+
+        # convert coordinates to distance from camera
+        x_distance, y_distance = self.camera_distance(coordinates)
+
+        # convert distance from camera to a map pixel coordinate
+        map_x = self.x + x_distance
+        map_y = self.y + y_distance
+
+        return map_x, map_y
+
+    def camera_distance(self, coordinates):
+
+        window_x, window_y = coordinates
+        distance_x = window_x - self.width / 2
+        distance_y = window_y - self.height / 2
+
+        return distance_x, distance_y
+
+    def map_distance(self, coordinates):
+
+        map_x, map_y = coordinates
+
+        dist_x = map_x - self.x
+        dist_y = map_y - self.y
+
+        return dist_x, dist_y
 
 
 class ObjectSpriteSheet:
@@ -832,8 +873,25 @@ def draw_game():
 
 def draw_map(map_to_draw):
 
-    for x in range(0, constants.MAP_WIDTH):
-        for y in range(0, constants.MAP_HEIGHT):
+    camera_x, camera_y = CAMERA.map_address
+    display_map_width = constants.CAMERA_WIDTH / constants.CELL_WIDTH
+    display_map_height = constants.CAMERA_HEIGHT / constants.CELL_HEIGHT
+
+    # Define Dimensions of the map to be drawn
+    render_width_min = int(camera_x - display_map_width / 2)
+    render_width_min = max(render_width_min, 0)
+
+    render_width_max = int(camera_x + display_map_width / 2)
+    render_width_max = min(render_width_max, constants.MAP_WIDTH)
+
+    render_height_min = int(camera_y - display_map_height / 2)
+    render_height_min = max(render_height_min, 0)
+
+    render_height_max = int(camera_y + display_map_height / 2)
+    render_height_max = min(render_height_max, constants.MAP_HEIGHT)
+
+    for x in range(render_width_min, render_width_max):
+        for y in range(render_height_min, render_height_max):
 
             is_visible = FOV_MAP.fov[y, x]
             if is_visible:
@@ -1073,8 +1131,8 @@ def menu_pause():
 
     menu_close = False
 
-    window_width = constants.MAP_WIDTH * constants.CELL_WIDTH
-    window_height = constants.MAP_HEIGHT * constants.CELL_HEIGHT
+    window_width = constants.CAMERA_WIDTH
+    window_height = constants.CAMERA_HEIGHT
 
     menu_text = 'PAUSED'
     menu_font = constants.FONT_DEBUG_MESSAGE
@@ -1107,8 +1165,8 @@ def menu_inventory():
     menu_width = 200
     menu_height = 200
 
-    window_width = constants.MAP_WIDTH * constants.CELL_WIDTH
-    window_height = constants.MAP_HEIGHT * constants.CELL_HEIGHT
+    window_width = constants.CAMERA_WIDTH
+    window_height = constants.CAMERA_HEIGHT
 
     menu_x = int(window_width/2 - menu_width/2)
     menu_y = int(window_height/2 - menu_height/2)
@@ -1187,14 +1245,23 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
     while not menu_close:
 
         # get mouse position
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        map_coordinates_x = int(mouse_x / constants.CELL_WIDTH)
-        map_coordinates_y = int(mouse_y / constants.CELL_HEIGHT)
+
+        # mouse_x, mouse_y = pygame.mouse.get_pos()
+        # map_coordinates_x = int(mouse_x / constants.CELL_WIDTH)
+        # map_coordinates_y = int(mouse_y / constants.CELL_HEIGHT)
+
+        mouse_coordinates = pygame.mouse.get_pos()
+        map_coordinate_x, map_coordinate_y = CAMERA.window_to_map(mouse_coordinates)
+
+        map_address_x = int(map_coordinate_x / constants.CELL_WIDTH)
+        map_address_y = int(map_coordinate_y / constants.CELL_HEIGHT)
+
+        # print(f'map_coordinates: ({map_coordinate_x}, {map_coordinate_y}) || map_address: ({map_address_x},{map_address_y})')
 
         if origin:
-            list_of_tiles = map_find_line(origin, (map_coordinates_x, map_coordinates_y))
+            list_of_tiles = map_find_line(origin, (map_address_x, map_address_y))
         else:
-            list_of_tiles = [(map_coordinates_x, map_coordinates_y)]
+            list_of_tiles = [(map_address_x, map_address_y)]
 
         if max_range:
             list_of_tiles = list_of_tiles[:max_range + 1]
@@ -1222,7 +1289,15 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
                     return list_of_tiles[-1]
 
         # draw game first
-        draw_game()
+        SURFACE_MAIN.fill(constants.COLOR_DEFAULT_BG)
+        SURFACE_MAP.fill(constants.COLOR_BLACK)
+
+        CAMERA.update()
+
+        # draw the map first
+        draw_map(GAME.current_map)
+        for obj in GAME.current_objects:
+            obj.draw()
 
         # draw rectangle at mouse position on top of game
         if len(list_of_tiles) > 1:
@@ -1239,7 +1314,13 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
                     draw_tile_rect((x, y), tile_color=constants.COLOR_RED)
 
         else:
-            draw_tile_rect((map_coordinates_x, map_coordinates_y), marker='X')
+            draw_tile_rect((map_address_x, map_address_y), marker='X')
+
+        # update main surface with the new map
+        SURFACE_MAIN.blit(SURFACE_MAP, (0, 0), CAMERA.rectangle)
+
+        draw_debug()
+        draw_messages()
 
         pygame.display.flip()
         CLOCK.tick(constants.GAME_FPS)
@@ -1304,7 +1385,6 @@ def gen_item(coordinates):
 def gen_scroll_lightning(coordinates):
 
     x, y = coordinates
-
 
     spell_damage = tcod.random_get_int(None, 5, 7)
     spell_range = tcod.random_get_int(None, 7, 8)
@@ -1383,14 +1463,24 @@ def gen_snake_anaconda(coordinates):
 
     x, y = coordinates
 
-    attack = tcod.random_get_int(None, 1, 2)
-    health = tcod.random_get_int(None, 5, 10)
+    creature_attributes = {
+        'name_instance': tcod.namegen_generate('Celtic female'),
+        'base_attack': tcod.random_get_int(None, 1, 2),
+        'hp': tcod.random_get_int(None, 5, 10),
+        'death_function': death_monster
+    }
 
-    name = tcod.namegen_generate('Celtic female')
+    actor_attributes = {
+        'x': x,
+        'y': y,
+        'name_object': 'anaconda',
+        'animation': ASSETS.A_SNAKE_01,
+        'animation_speed': 1,
+        'creature': ComponentCreature(**creature_attributes),
+        'ai': AIChase()
+    }
 
-    creature_component = ComponentCreature(name_instance=name, base_attack=attack, hp=health, death_function=death_monster)
-    snake_ai = AIChase()
-    anaconda = ObjActor(x, y, 'anaconda', ASSETS.A_SNAKE_01, animation_speed=1, creature=creature_component, ai=snake_ai)
+    anaconda = ObjActor(**actor_attributes)
 
     return anaconda
 
@@ -1399,14 +1489,24 @@ def gen_snake_cobra(coordinates):
 
     x, y = coordinates
 
-    attack = tcod.random_get_int(None, 3, 6)
-    health = tcod.random_get_int(None, 15, 20)
+    creature_attributes = {
+        'name_instance': tcod.namegen_generate('Celtic male'),
+        'base_attack': tcod.random_get_int(None, 3, 6),
+        'hp': tcod.random_get_int(None, 15, 20),
+        'death_function': death_monster
+    }
 
-    name = tcod.namegen_generate('Celtic male')
+    actor_attributes = {
+        'x': x,
+        'y': y,
+        'name_object': 'cobra',
+        'animation': ASSETS.A_SNAKE_02,
+        'animation_speed': 1,
+        'creature': ComponentCreature(**creature_attributes),
+        'ai': AIChase()
+    }
 
-    creature_component = ComponentCreature(name_instance=name, base_attack=attack, hp=health, death_function=death_monster)
-    snake_ai = AIChase()
-    cobra = ObjActor(x, y, 'cobra', ASSETS.A_SNAKE_02, animation_speed=1, creature=creature_component, ai=snake_ai)
+    cobra = ObjActor(**actor_attributes)
 
     return cobra
 
