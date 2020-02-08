@@ -156,7 +156,7 @@ class ObjActor:
         is_visible = FOV_MAP.fov[self.y, self.x]
         if is_visible:
             if len(self.animation) == 1:
-                SURFACE_MAIN.blit(self.animation[0], (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
+                SURFACE_MAP.blit(self.animation[0], (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT))
             elif len(self.animation) > 1:
                 if CLOCK.get_fps() > 0.0:
                     self.flicker_timer += 1 / CLOCK.get_fps()
@@ -167,7 +167,7 @@ class ObjActor:
                     else:
                         self.sprite_image += 1
                 draw_location = (self.x * constants.CELL_WIDTH, self.y * constants.CELL_HEIGHT)
-                SURFACE_MAIN.blit(self.animation[self.sprite_image], draw_location)
+                SURFACE_MAP.blit(self.animation[self.sprite_image], draw_location)
 
     def distance_to(self, other):
 
@@ -205,6 +205,25 @@ class ObjectGame:
         self.current_objects = []
         self.message_history = []
         self.current_map = None
+
+
+class ObjectCamera:
+
+    def __init__(self):
+
+        self.width = constants.CAMERA_WIDTH
+        self.height = constants.CAMERA_HEIGHT
+        self.x, self.y = (0, 0)
+
+    def update(self):
+        self.x = int(round(PLAYER.x * constants.CELL_WIDTH + constants.CELL_WIDTH / 2))
+        self.y = int(round(PLAYER.y * constants.CELL_HEIGHT + constants.CELL_HEIGHT / 2))
+
+    @property
+    def rectangle(self):
+        camera_rectangle = pygame.Rect((0, 0), (self.width, self.height))
+        camera_rectangle.center = (self.x, self.y)
+        return camera_rectangle
 
 
 class ObjectSpriteSheet:
@@ -605,7 +624,7 @@ def death_monster(monster):
 def map_create():
 
     # Create a map of Height by Width dimensions
-    new_map = [[StructureTile(True) for y in range(0, constants.MAP_HEIGHT)] for x in range(0, constants.MAP_WIDTH)]
+    new_map = [[StructureTile(True) for _ in range(0, constants.MAP_HEIGHT)] for _ in range(0, constants.MAP_WIDTH)]
 
     # Generate new room
     list_of_rooms = []
@@ -672,17 +691,16 @@ def map_place_objects(room_list):
     for room in room_list:
 
         # Place a random enemy
-        # x = roll_dice(start=room.x1 + 1, sides=room.x2 - 1)
-        # y = roll_dice(start=room.y1 + 1, sides=room.y2 - 1)
+        x = roll_dice(start=room.x1 + 1, sides=room.x2 - 1)
+        y = roll_dice(start=room.y1 + 1, sides=room.y2 - 1)
 
-        x = tcod.random_get_int(None, room.x1 + 1, room.x2 - 1)
-        y = tcod.random_get_int(None, room.y1 + 1, room.y2 - 1)
+        # x = tcod.random_get_int(None, room.x1 + 1, room.x2 - 1)
+        # y = tcod.random_get_int(None, room.y1 + 1, room.y2 - 1)
         gen_enemy((x, y))
 
         # Place a random item
-        x = tcod.random_get_int(None, room.x1 + 1, room.x2 - 1)
-        y = tcod.random_get_int(None, room.y1 + 1, room.y2 - 1)
-
+        x = roll_dice(start=room.x1 + 1, sides=room.x2 - 1)
+        y = roll_dice(start=room.y1 + 1, sides=room.y2 - 1)
         gen_item((x, y))
 
 
@@ -795,6 +813,9 @@ def draw_game():
 
     # clear the surface
     SURFACE_MAIN.fill(constants.COLOR_DEFAULT_BG)
+    SURFACE_MAP.fill(constants.COLOR_DEFAULT_BG)
+
+    CAMERA.update()
 
     # draw the map
     draw_map(GAME.current_map)
@@ -802,6 +823,8 @@ def draw_game():
     # draw the characters
     for obj in GAME.current_objects:
         obj.draw()
+
+    SURFACE_MAIN.blit(SURFACE_MAP, (0, 0), CAMERA.rectangle)
 
     draw_debug()
     draw_messages()
@@ -817,15 +840,15 @@ def draw_map(map_to_draw):
 
                 map_to_draw[x][y].explored = True
                 if map_to_draw[x][y].block_path:
-                    SURFACE_MAIN.blit(ASSETS.S_WALL, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(ASSETS.S_WALL, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
                 else:
-                    SURFACE_MAIN.blit(ASSETS.S_FLOOR, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(ASSETS.S_FLOOR, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 
             elif map_to_draw[x][y].explored:
                 if map_to_draw[x][y].block_path:
-                    SURFACE_MAIN.blit(ASSETS.S_WALL_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(ASSETS.S_WALL_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
                 else:
-                    SURFACE_MAIN.blit(ASSETS.S_FLOOR_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(ASSETS.S_FLOOR_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 
 
 def draw_debug():
@@ -844,7 +867,7 @@ def draw_messages():
 
     text_height = helper_text_height(constants.FONT_MESSAGE_TEXT)
 
-    start_y = constants.MAP_HEIGHT * constants.CELL_HEIGHT - (constants.NUM_MESSAGES * text_height) - 10
+    start_y = constants.CAMERA_HEIGHT - (constants.NUM_MESSAGES * text_height) - 10
 
     for index, (message, color) in enumerate(to_draw):
         message_location = (0, start_y + index * text_height)
@@ -900,7 +923,7 @@ def draw_tile_rect(coordinates, tile_color=None, tile_alpha=150, marker=None):
         draw_text(new_surface, marker, font=marker_font, coordinates=(mx, my), text_color=marker_color, alignment=align)
 
     # SURFACE_MAIN
-    SURFACE_MAIN.blit(new_surface, (new_x, new_y))
+    SURFACE_MAP.blit(new_surface, (new_x, new_y))
 
 
 #  __    __   _______  __      .______    _______ .______          _______.
@@ -1018,7 +1041,7 @@ def cast_fireball(caster, value):
         print('cast lightning cancelled.')
 
 
-def cast_confusion(caster, effect_length):
+def cast_confusion(_, effect_length):
 
     # get target
     target_tile = menu_tile_select()
@@ -1209,10 +1232,11 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
                 else:
                     draw_tile_rect(tile)
 
-        if radius:
-            area_of_effect = map_find_radius(list_of_tiles[-1], radius)
-            for x, y in area_of_effect:
-                draw_tile_rect((x, y), tile_color=constants.COLOR_RED)
+            # TODO: Show radius if len = 1
+            if radius:
+                area_of_effect = map_find_radius(list_of_tiles[-1], radius)
+                for x, y in area_of_effect:
+                    draw_tile_rect((x, y), tile_color=constants.COLOR_RED)
 
         else:
             draw_tile_rect((map_coordinates_x, map_coordinates_y), marker='X')
@@ -1432,7 +1456,7 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, GAME, CLOCK, FOV_CALCULATE, PLAYER, ASSETS
+    global SURFACE_MAIN, SURFACE_MAP, GAME, CLOCK, FOV_CALCULATE, PLAYER, ASSETS, CAMERA
 
     # initialize pygame
     pygame.init()
@@ -1440,10 +1464,14 @@ def game_initialize():
     tcod.namegen_parse('data/celtic.cfg')
 
     # create display surface with a given Height, and Width
-    SURFACE_MAIN = pygame.display.set_mode((
+    SURFACE_MAIN = pygame.display.set_mode((constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT))
+
+    SURFACE_MAP = pygame.Surface((
             constants.MAP_WIDTH * constants.CELL_WIDTH,
             constants.MAP_HEIGHT * constants.CELL_HEIGHT
         ))
+
+    CAMERA = ObjectCamera()
 
     # start the game object
     ASSETS = StructureAssets()
