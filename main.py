@@ -204,7 +204,51 @@ class ObjectGame:
 
         self.current_objects = []
         self.message_history = []
-        self.current_map = None
+        self.maps_previous = []
+        self.maps_next = []
+        self.current_map, self.current_rooms = map_create()
+
+    def transition_next(self):
+
+        global FOV_CALCULATE
+
+        # save current map to previous maps
+        self.maps_previous.append((PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects))
+
+        if len(self.maps_next) == 0:
+
+            # clear current_objects list
+            self.current_objects = [PLAYER]
+
+            # create new map and place objects
+            self.current_map, self.current_rooms = map_create()
+            map_place_objects(self.current_rooms)
+
+        else:
+            # load next map
+            PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects = self.maps_next.pop(-1)
+
+            # calculate FOV
+            map_make_fov(self.current_map)
+        FOV_CALCULATE = True
+
+    def transition_previous(self):
+
+        global FOV_CALCULATE
+
+        if len(self.maps_previous) > 0:
+
+            # save current map to next maps
+            self.maps_next.append((PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects))
+
+            # load last map
+            PLAYER.x, PLAYER.y, self.current_map, self.current_rooms, self.current_objects = self.maps_previous.pop(-1)
+
+            # calculate fov
+            map_make_fov(self.current_map)
+            FOV_CALCULATE = True
+
+
 
 
 class ObjectCamera:
@@ -235,8 +279,8 @@ class ObjectCamera:
 
         distance_x, distance_y = self.map_distance((target_x, target_y))
 
-        self.x += int(distance_x)
-        self.y += int(distance_y)
+        self.x += int(distance_x * .1)
+        self.y += int(distance_y * .1)
 
     def window_to_map(self, coordinates):
 
@@ -363,8 +407,8 @@ class ObjectRoom:
 
     @property
     def center(self):
-        center_x = int(round((self.x1 + self.x2)/2))
-        center_y = int(round((self.y1 + self.y2)/2))
+        center_x = int((self.x1 + self.x2)/2)
+        center_y = int((self.y1 + self.y2)/2)
         return center_x, center_y
 
     def intercept(self, other):
@@ -689,11 +733,7 @@ def map_create():
         if not failed:
             map_create_room(new_map, new_room)
 
-            if len(list_of_rooms) == 0:
-                gen_player(new_room.center)
-
-            # Dig the tunnels
-            else:
+            if len(list_of_rooms) != 0:
                 other_room = list_of_rooms[-1]
                 map_create_tunnel(new_map, new_room.center, other_room.center)
 
@@ -729,7 +769,11 @@ def map_create_tunnel(new_map, room1, room2):
 
 def map_place_objects(room_list):
 
-    for room in room_list:
+    for index, room in enumerate(room_list):
+
+        if index == 0:
+            PLAYER.x, PLAYER.y = room.center
+            continue
 
         # Place a random enemy
         x = roll_dice(start=room.x1 + 1, sides=room.x2 - 1)
@@ -1245,18 +1289,11 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
     while not menu_close:
 
         # get mouse position
-
-        # mouse_x, mouse_y = pygame.mouse.get_pos()
-        # map_coordinates_x = int(mouse_x / constants.CELL_WIDTH)
-        # map_coordinates_y = int(mouse_y / constants.CELL_HEIGHT)
-
         mouse_coordinates = pygame.mouse.get_pos()
         map_coordinate_x, map_coordinate_y = CAMERA.window_to_map(mouse_coordinates)
 
         map_address_x = int(map_coordinate_x / constants.CELL_WIDTH)
         map_address_y = int(map_coordinate_y / constants.CELL_HEIGHT)
-
-        # print(f'map_coordinates: ({map_coordinate_x}, {map_coordinate_y}) || map_address: ({map_address_x},{map_address_y})')
 
         if origin:
             list_of_tiles = map_find_line(origin, (map_address_x, map_address_y))
@@ -1290,7 +1327,7 @@ def menu_tile_select(origin=None, max_range=None, ignore_walls=True, ignore_crea
 
         # draw game first
         SURFACE_MAIN.fill(constants.COLOR_DEFAULT_BG)
-        SURFACE_MAP.fill(constants.COLOR_BLACK)
+        SURFACE_MAP.fill(constants.COLOR_DEFAULT_BG)
 
         CAMERA.update()
 
@@ -1556,7 +1593,7 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, SURFACE_MAP, GAME, CLOCK, FOV_CALCULATE, PLAYER, ASSETS, CAMERA
+    global SURFACE_MAIN, SURFACE_MAP, CLOCK, FOV_CALCULATE, PLAYER, ASSETS, CAMERA
 
     # initialize pygame
     pygame.init()
@@ -1571,25 +1608,20 @@ def game_initialize():
             constants.MAP_HEIGHT * constants.CELL_HEIGHT
         ))
 
+    # CAMERA tracks what is shown on the display
     CAMERA = ObjectCamera()
 
-    # start the game object
+    # ASSETS stores the game assets
     ASSETS = StructureAssets()
-    GAME = ObjectGame()
-    GAME.current_map, GAME.current_rooms = map_create()
-    map_place_objects(GAME.current_rooms)
+
+    # CLOCK tracks and limits CPU cycles
     CLOCK = pygame.time.Clock()
+
+    # When FOV is true, FOV recalculates
     FOV_CALCULATE = True
 
-    # # Create 3 items
-    # gen_item((2, 2))
-    # gen_item((2, 3))
-    # gen_item((2, 4))
-    #
-    # # create 2 enemies
-    #
-    # gen_enemy((15, 15))
-    # gen_enemy((15, 16))
+    # Create a new game
+    game_new()
 
 
 def game_handle_keys():
@@ -1643,7 +1675,10 @@ def game_handle_keys():
                 menu_inventory()
             # Open look menu by pressing the "l" key
             if event.key == pygame.K_l:
-                menu_tile_select()
+                GAME.transition_next()
+
+            if event.key == pygame.K_o:
+                GAME.transition_previous()
 
     return 'no-action'
 
@@ -1651,6 +1686,19 @@ def game_handle_keys():
 def game_message(message, color=constants.COLOR_GREY):
     GAME.message_history.append((message, color))
 
+
+def game_new():
+
+    global GAME
+
+    # Creates new GAME
+    GAME = ObjectGame()
+
+    # Creates a player
+    gen_player((0, 0))
+
+    # Place objects on map
+    map_place_objects(GAME.current_rooms)
 
 #############################################################
 ###################################################   #######
