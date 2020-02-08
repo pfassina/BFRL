@@ -351,8 +351,8 @@ class ObjectCamera:
 
         distance_x, distance_y = self.map_distance((target_x, target_y))
 
-        self.x += int(distance_x * .1)
-        self.y += int(distance_y * .1)
+        self.x += int(distance_x)
+        self.y += int(distance_y)
 
     def window_to_map(self, coordinates):
 
@@ -1288,12 +1288,127 @@ def cast_confusion(_, effect_length):
             game_message(f"{target.display_name} is confused. The creature's eyes glaze over", constants.COLOR_GREEN)
 
 
+# __    __   __
+# |  |  |  | |  |
+# |  |  |  | |  |
+# |  |  |  | |  |
+# |  `--'  | |  |
+# \______/  |__|
+
+
+class UIButton:
+
+    def __init__(self, size, surface, center_coordinates, button_text,
+                 color_box_default=constants.COLOR_RED,
+                 color_box_mouse_over=constants.COLOR_GREEN,
+                 color_text_default=constants.COLOR_BLACK,
+                 color_text_mouse_over=constants.COLOR_WHITE
+                 ):
+
+        self.size = size
+        self.surface = surface
+        self.center_coordinates = center_coordinates
+        self.button_text = button_text
+
+        self.color_box_default = color_box_default
+        self.color_box_mouse_over = color_box_mouse_over
+        self.color_text_default = color_text_default
+        self.color_text_mouse_over = color_text_mouse_over
+
+        self.current_box_color = self.color_box_default
+        self.current_text_color = self.color_text_default
+
+        self.rect = pygame.Rect((0, 0), size)
+        self.rect.center = self.center_coordinates
+
+    def update(self, player_input):
+
+        local_events, local_mouse_position = player_input
+        mouse_x, mouse_y = local_mouse_position
+
+        mouse_clicked = False
+        mouse_over = False
+
+        if self.rect.left <= mouse_x <= self.rect.right and self.rect.bottom >= mouse_y >= self.rect.top:
+            mouse_over = True
+
+        for event in local_events:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    mouse_clicked = True
+
+        if mouse_over:
+            self.current_box_color = self.color_box_mouse_over
+            self.current_text_color = self.color_text_mouse_over
+
+        else:
+            self.current_box_color = self.color_box_default
+            self.current_text_color = self.color_text_default
+
+        if mouse_over and mouse_clicked:
+            return True
+
+    def draw(self):
+        pygame.draw.rect(self.surface, self.current_box_color, self.rect)
+        draw_text(display_surface=self.surface, text_to_display=self.button_text,
+                  font=constants.FONT_DEBUG_MESSAGE, coordinates=self.center_coordinates,
+                  text_color=self.current_text_color, alignment='center'
+                  )
+
 # .___  ___.  _______ .__   __.  __    __       _______.
 # |   \/   | |   ____||  \ |  | |  |  |  |     /       |
 # |  \  /  | |  |__   |   \|  | |  |  |  |    |   (----`
 # |  |\/|  | |   __|  |  . `  | |  |  |  |     \   \
 # |  |  |  | |  |____ |  |\   | |  `--'  | .----)   |
 # |__|  |__| |_______||__| \__|  \______/  |_______/
+
+
+def menu_main():
+
+    game_initialize()
+
+    game_title = {
+        'display_surface': SURFACE_MAIN,
+        'text_to_display': 'PythonRL',
+        'font': constants.FONT_MESSAGE_TEXT,
+        'coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2 - 40),
+        'text_color': constants.COLOR_WHITE,
+        'alignment': 'center',
+    }
+
+    button_attributes = {
+        'surface': SURFACE_MAIN,
+        'button_text': 'Start Game',
+        'size': (150, 35),
+        'center_coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2 + 20)
+    }
+    test_button = UIButton(**button_attributes)
+
+    menu_running = True
+    while menu_running:
+
+        list_of_events = pygame.event.get()
+        mouse_position = pygame.mouse.get_pos()
+
+        game_input = (list_of_events, mouse_position)
+
+        for event in list_of_events:
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+        # button updates
+        if test_button.update(game_input):
+            game_start()
+
+        # draw menu
+        SURFACE_MAIN.fill(constants.COLOR_BLACK)
+        draw_text(**game_title)
+        test_button.draw()
+
+        # update surfaces
+        pygame.display.flip()
+
 
 
 def menu_pause():
@@ -1332,8 +1447,6 @@ def menu_pause():
 
 def menu_inventory():
 
-    menu_close = False
-
     menu_width = 200
     menu_height = 200
 
@@ -1350,6 +1463,7 @@ def menu_inventory():
 
     inventory_surface = pygame.Surface((menu_width, menu_height))
 
+    menu_close = False
     while not menu_close:
 
         menu_font = constants.FONT_MESSAGE_TEXT
@@ -1788,12 +1902,6 @@ def game_initialize():
     # When FOV is true, FOV recalculates
     FOV_CALCULATE = True
 
-    # Create a new game
-    try:
-        game_load()
-    except FileNotFoundError:
-        game_new()
-
 
 def game_message(message, color=constants.COLOR_GREY):
     GAME.message_history.append((message, color))
@@ -1867,6 +1975,17 @@ def game_handle_keys():
     return 'no-action'
 
 
+def game_start():
+
+    # starts the game
+    try:
+        game_load()
+    except FileNotFoundError:
+        game_new()
+
+    game_main_loop()
+
+
 def game_new():
 
     global GAME
@@ -1935,5 +2054,4 @@ def game_exit():
 
 
 if __name__ == '__main__':
-    game_initialize()
-    game_main_loop()
+    menu_main()
