@@ -144,3 +144,6 @@ About
 
 # pycharm stuff
 .idea/
+
+# save game data
+/savegame/savegame
