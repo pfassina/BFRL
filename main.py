@@ -36,15 +36,15 @@ class StructureAssets:
     def __init__(self):
 
         # Sprite Sheets
-        self.char_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
-        self.enemies_sprite_sheet = ObjectSpriteSheet('data/reptiles.png')
-        self.items_sprite_sheet = ObjectSpriteSheet('data/scroll.png')
-        self.flesh_sprite_sheet = ObjectSpriteSheet('data/flesh.png')
+        self.ss_player = ObjectSpriteSheet('data/reptiles.png')
+        self.ss_enemy = ObjectSpriteSheet('data/reptiles.png')
+        self.ss_items = ObjectSpriteSheet('data/scroll.png')
+        self.ss_flesh = ObjectSpriteSheet('data/flesh.png')
 
         # Animations
-        self.A_PLAYER = self.char_sprite_sheet.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
-        self.A_SNAKE_01 = self.enemies_sprite_sheet.get_animation('e', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
-        self.A_SNAKE_02 = self.enemies_sprite_sheet.get_animation('k', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
+        self.A_PLAYER = self.ss_player.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
+        self.A_SNAKE_01 = self.ss_enemy.get_animation('e', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
+        self.A_SNAKE_02 = self.ss_enemy.get_animation('k', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
 
         # Sprites
         self.S_WALL = pygame.image.load('data/wall.jpg')
@@ -54,18 +54,18 @@ class StructureAssets:
         self.S_FLOOR_EXPLORED = pygame.image.load('data/floor_explored.png')
 
         # Items
-        # since it is not on a spritesheet...
+        # since it is not on a sprite sheet...
         sword_img = pygame.image.load('data/sword.png')
-        shield_img = pygame.image.load('data/shield.png')
-
         self.S_SWORD = [pygame.transform.scale(sword_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
+
+        shield_img = pygame.image.load('data/shield.png')
         self.S_SHIELD = [pygame.transform.scale(shield_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
 
-        self.S_SCROLL_01 = self.items_sprite_sheet.get_animation('d', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_SCROLL_02 = self.items_sprite_sheet.get_animation('b', 1, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_SCROLL_03 = self.items_sprite_sheet.get_animation('c', 5, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_01 = self.ss_items.get_animation('d', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_02 = self.ss_items.get_animation('b', 1, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_SCROLL_03 = self.ss_items.get_animation('c', 5, width=16, height=16, num_sprites=1, scale=(32, 32))
 
-        self.S_FLESH_01 = self.flesh_sprite_sheet.get_animation('a', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
+        self.S_FLESH_01 = self.ss_flesh.get_animation('a', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
 
 
 #   ______   .______          __   _______   ______ .___________.    _______.
@@ -247,8 +247,6 @@ class ObjectGame:
             # calculate fov
             map_make_fov(self.current_map)
             FOV_CALCULATE = True
-
-
 
 
 class ObjectCamera:
