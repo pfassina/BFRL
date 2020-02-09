@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 import pygame
 import random
+import sys
 import tcod
 
 # game files
@@ -77,12 +78,18 @@ class StructureAssets:
         self.S_FLESH_01 = self.ss_flesh.get_animation('a', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
         self.S_FLESH_02 = self.ss_flesh.get_animation('c', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
 
-        # AUDIO
+        # Special
+        menu_bg_img = pygame.image.load('data/graphics/menu_bg.jpg')
+        self.main_menu_bg = pygame.transform.scale(menu_bg_img, (constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT))
+
+        # Audio
+        self.sound_list = []
+
         self.music_background = 'data/audio/main_music.mp3'
-        self.sound_hit_01 = pygame.mixer.Sound('data/audio/hit_01.wav')
-        self.sound_hit_02 = pygame.mixer.Sound('data/audio/hit_02.wav')
-        self.sound_hit_03 = pygame.mixer.Sound('data/audio/hit_03.wav')
-        self.sound_hit_04 = pygame.mixer.Sound('data/audio/hit_04.wav')
+        self.sound_hit_01 = self.add_sound('data/audio/hit_01.wav')
+        self.sound_hit_02 = self.add_sound('data/audio/hit_02.wav')
+        self.sound_hit_03 = self.add_sound('data/audio/hit_03.wav')
+        self.sound_hit_04 = self.add_sound('data/audio/hit_04.wav')
 
         self.sound_hit_list = [self.sound_hit_01, self.sound_hit_02, self.sound_hit_03, self.sound_hit_04]
 
@@ -113,8 +120,10 @@ class StructureAssets:
         }
         return animation_dict[key]
 
-    def load_sound(self):
-        pass
+    def add_sound(self, file):
+        new_sound = pygame.mixer.Sound(file)
+        self.sound_list.append(new_sound)
+        return new_sound
 
 #   ______   .______          __   _______   ______ .___________.    _______.
 #  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
@@ -1381,12 +1390,22 @@ def menu_main():
 
     game_initialize()
 
+    # UI Addresses
+    center_x, center_y = (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2)
+    game_tile_x, game_tile_y = (center_x, center_y - 260)
+    footer_x, footer_y = (center_x - 500, constants.CAMERA_HEIGHT - 10)
+    continue_x, continue_y = (center_x, center_y + 240)
+    new_game_x, new_game_y = (center_x, continue_y + 40)
+    options_x, options_y = (center_x, new_game_y + 40)
+    exit_x, exit_y = (center_x, options_y + 40)
+
     game_title = {
         'display_surface': SURFACE_MAIN,
         'text_to_display': 'PythonRL',
-        'font': constants.FONT_MESSAGE_TEXT,
-        'coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2 - 40),
+        'font': constants.FONT_TITLE_SCREEN,
+        'coordinates': (game_tile_x, game_tile_y),
         'text_color': constants.COLOR_WHITE,
+        'back_color': constants.COLOR_BLACK,
         'alignment': 'center',
     }
 
@@ -1394,21 +1413,45 @@ def menu_main():
         'display_surface': SURFACE_MAIN,
         'text_to_display': 'music by icons8.com',
         'font': constants.FONT_MESSAGE_TEXT,
-        'coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT - 40),
+        'coordinates': (footer_x, footer_y),
         'text_color': constants.COLOR_GREY,
         'alignment': 'center',
     }
 
-    button_attributes = {
+    continue_button_attributes = {
         'surface': SURFACE_MAIN,
-        'button_text': 'Start Game',
+        'button_text': 'continue',
         'size': (150, 35),
-        'center_coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2 + 20)
+        'center_coordinates': (continue_x, continue_y)
     }
-    test_button = UIButton(**button_attributes)
+    continue_button = UIButton(**continue_button_attributes)
+
+    new_game_button_attributes = {
+        'surface': SURFACE_MAIN,
+        'button_text': 'new game',
+        'size': (150, 35),
+        'center_coordinates': (new_game_x, new_game_y)
+    }
+    new_game_button = UIButton(**new_game_button_attributes)
+
+    options_attributes = {
+        'surface': SURFACE_MAIN,
+        'button_text': 'options',
+        'size': (150, 35),
+        'center_coordinates': (options_x, options_y)
+    }
+    options_button = UIButton(**options_attributes)
+
+    quit_button_attributes = {
+        'surface': SURFACE_MAIN,
+        'button_text': 'quit game',
+        'size': (150, 35),
+        'center_coordinates': (exit_x, exit_y)
+    }
+    quit_button = UIButton(**quit_button_attributes)
 
     # draw menu
-    SURFACE_MAIN.fill(constants.COLOR_BLACK)
+    SURFACE_MAIN.blit(ASSETS.main_menu_bg, (0, 0))
     draw_text(**game_title)
     draw_text(**footer)
 
@@ -1430,13 +1473,62 @@ def menu_main():
                 exit()
 
         # button updates
-        if test_button.update(game_input):
+        if continue_button.update(game_input):
             pygame.mixer.music.stop()
-            game_start()
+            game_start(continue_game=True)
+
+        if new_game_button.update(game_input):
+            pygame.mixer.music.stop()
+            game_start(continue_game=False)
+
+        if options_button.update(game_input):
+            menu_options()
+            SURFACE_MAIN.blit(ASSETS.main_menu_bg, (0, 0))
+            draw_text(**game_title)
+            draw_text(**footer)
+
+        if quit_button.update(game_input):
+            pygame.mixer.music.stop()
+            pygame.quit()
+            sys.exit()
 
         # update surfaces
-        test_button.draw()
+        continue_button.draw()
+        new_game_button.draw()
+        options_button.draw()
+        quit_button.draw()
         pygame.display.flip()
+
+
+def menu_options():
+
+    window_center = (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2)
+
+    settings_menu_width = 200
+    settings_menu_height = 200
+    settings_menu_bgcolor = constants.COLOR_DEFAULT_BG
+
+    settings_menu_surface = pygame.Surface((settings_menu_width, settings_menu_height))
+    settings_menu_rect = pygame.Rect(0, 0, settings_menu_width, settings_menu_width)
+    settings_menu_rect.center = window_center
+
+    settings_menu_surface.fill(settings_menu_bgcolor)
+    SURFACE_MAIN.blit(settings_menu_surface, settings_menu_rect.topleft)
+
+    menu_close = False
+    while not menu_close:
+
+        list_of_events = pygame.event.get()
+        mouse_position = pygame.mouse.get_pos()
+
+        game_input = (list_of_events, mouse_position)
+
+        for event in list_of_events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    menu_close = True
+
+        pygame.display.update()
 
 
 def menu_pause():
@@ -2005,14 +2097,17 @@ def game_handle_keys():
     return 'no-action'
 
 
-def game_start():
+def game_start(continue_game=True):
 
     # starts the game
-    try:
-        game_load()
-    except FileNotFoundError:
+    if continue_game:
+        try:
+            game_load()
+        except FileNotFoundError:
+            game_new()
+            print('Game not found')
+    else:
         game_new()
-
     game_main_loop()
 
 
@@ -2057,7 +2152,7 @@ def game_exit():
 
     game_save()
     pygame.quit()
-    exit()
+    sys.exit()
 
 
 #############################################################
