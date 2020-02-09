@@ -147,4 +147,5 @@ About
 
 # save game data
 /data/savegame
-/data/legacy/*.txt
+/data/preferences
+/data/legacy/*
