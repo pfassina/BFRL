@@ -1378,6 +1378,58 @@ class UIButton:
                   text_color=self.current_text_color, alignment='center'
                   )
 
+
+class UISlider:
+
+    def __init__(self, size, surface, center_coordinates, color_background, color_foreground, value):
+
+        self.size = size
+        self.surface = surface
+        self.center_coordinates = center_coordinates
+        self.color_background = color_background
+        self.color_foreground = color_foreground
+        self.value = value
+
+        self.bg_rect = pygame.Rect((0, 0), self.size)
+        self.bg_rect.center = self.center_coordinates
+
+        self.fg_rect = pygame.Rect((0, 0), (self.bg_rect.width * self.value, self.bg_rect.height))
+        self.fg_rect.topleft = self.bg_rect.topleft
+
+        self.grip_rect = pygame.Rect((0, 0), (10, self.bg_rect.height + 8))
+        self.grip_rect.center = self.center_coordinates
+
+    def update(self, player_input):
+
+        local_events, local_mouse_position = player_input
+        mouse_x, mouse_y = local_mouse_position
+
+        mouse_over = False
+        if self.bg_rect.left <= mouse_x <= self.bg_rect.right and self.bg_rect.bottom >= mouse_y >= self.bg_rect.top:
+            mouse_over = True
+
+        mouse_down = pygame.mouse.get_pressed()[0]
+        if mouse_over and mouse_down:
+
+            # update value with mouse relative position
+            self.value = (mouse_x - self.bg_rect.left) / self.bg_rect.width
+
+            # update foreground rectangle based on new value
+            self.fg_rect.width = self.bg_rect.width * self.value
+            self.grip_rect.center = self.fg_rect.midright
+
+    def draw(self):
+
+        # draw background rectangle
+        pygame.draw.rect(self.surface, self.color_background, self.bg_rect)
+
+        # drag foreground rectangle
+        pygame.draw.rect(self.surface, self.color_foreground, self.fg_rect)
+
+        # drag foreground rectangle
+        pygame.draw.rect(self.surface, constants.COLOR_RED, self.grip_rect)
+
+
 # .___  ___.  _______ .__   __.  __    __       _______.
 # |   \/   | |   ____||  \ |  | |  |  |  |     /       |
 # |  \  /  | |  |__   |   \|  | |  |  |  |    |   (----`
@@ -1512,8 +1564,16 @@ def menu_options():
     settings_menu_rect = pygame.Rect(0, 0, settings_menu_width, settings_menu_width)
     settings_menu_rect.center = window_center
 
-    settings_menu_surface.fill(settings_menu_bgcolor)
-    SURFACE_MAIN.blit(settings_menu_surface, settings_menu_rect.topleft)
+    slider_attributes = {
+        'size': (125, 15),
+        'surface': SURFACE_MAIN,
+        'center_coordinates': window_center,
+        'color_background': constants.COLOR_WHITE,
+        'color_foreground': constants.COLOR_GREEN,
+        'value': 0.5
+    }
+
+    slider = UISlider(**slider_attributes)
 
     menu_close = False
     while not menu_close:
@@ -1528,6 +1588,11 @@ def menu_options():
                 if event.key == pygame.K_ESCAPE:
                     menu_close = True
 
+        slider.update(game_input)
+
+        settings_menu_surface.fill(settings_menu_bgcolor)
+        SURFACE_MAIN.blit(settings_menu_surface, settings_menu_rect.topleft)
+        slider.draw()
         pygame.display.update()
 
 
