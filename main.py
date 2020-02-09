@@ -4,6 +4,7 @@ import math
 import numpy as np
 import pickle
 import pygame
+import random
 import tcod
 
 # game files
@@ -40,11 +41,11 @@ class StructureAssets:
     def __init__(self):
 
         # Sprite Sheets
-        self.ss_player = ObjectSpriteSheet('data/reptiles.png')
-        self.ss_enemy = ObjectSpriteSheet('data/reptiles.png')
-        self.ss_items = ObjectSpriteSheet('data/scroll.png')
-        self.ss_flesh = ObjectSpriteSheet('data/flesh.png')
-        self.ss_tile = ObjectSpriteSheet('data/tile.png')
+        self.ss_player = ObjectSpriteSheet('data/graphics/reptiles.png')
+        self.ss_enemy = ObjectSpriteSheet('data/graphics/reptiles.png')
+        self.ss_items = ObjectSpriteSheet('data/graphics/scroll.png')
+        self.ss_flesh = ObjectSpriteSheet('data/graphics/flesh.png')
+        self.ss_tile = ObjectSpriteSheet('data/graphics/tile.png')
 
         # Animations
         self.A_PLAYER = self.ss_player.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
@@ -53,20 +54,20 @@ class StructureAssets:
         self.A_MOUSE_01 = self.ss_enemy.get_animation('g', 11, width=16, height=16, num_sprites=2, scale=(32, 32))
 
         # Tiles
-        self.S_WALL = pygame.image.load('data/wall.jpg')
-        self.S_WALL_EXPLORED = pygame.image.load('data/wall_explored.png')
+        self.S_WALL = pygame.image.load('data/graphics/wall.jpg')
+        self.S_WALL_EXPLORED = pygame.image.load('data/graphics/wall_explored.png')
 
-        self.S_FLOOR = pygame.image.load('data/floor.png')
-        self.S_FLOOR_EXPLORED = pygame.image.load('data/floor_explored.png')
+        self.S_FLOOR = pygame.image.load('data/graphics/floor.png')
+        self.S_FLOOR_EXPLORED = pygame.image.load('data/graphics/floor_explored.png')
 
         self.S_STAIRS_UP = self.ss_tile.get_animation('d', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
         self.S_STAIRS_DOWN = self.ss_tile.get_animation('f', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
 
         # Items
-        sword_img = pygame.image.load('data/sword.png')
+        sword_img = pygame.image.load('data/graphics/sword.png')
         self.S_SWORD = [pygame.transform.scale(sword_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
 
-        shield_img = pygame.image.load('data/shield.png')
+        shield_img = pygame.image.load('data/graphics/shield.png')
         self.S_SHIELD = [pygame.transform.scale(shield_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
 
         self.S_SCROLL_01 = self.ss_items.get_animation('d', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
@@ -75,6 +76,15 @@ class StructureAssets:
 
         self.S_FLESH_01 = self.ss_flesh.get_animation('a', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
         self.S_FLESH_02 = self.ss_flesh.get_animation('c', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
+
+        # AUDIO
+        self.music_background = 'data/audio/main_music.mp3'
+        self.sound_hit_01 = pygame.mixer.Sound('data/audio/hit_01.wav')
+        self.sound_hit_02 = pygame.mixer.Sound('data/audio/hit_02.wav')
+        self.sound_hit_03 = pygame.mixer.Sound('data/audio/hit_03.wav')
+        self.sound_hit_04 = pygame.mixer.Sound('data/audio/hit_04.wav')
+
+        self.sound_hit_list = [self.sound_hit_01, self.sound_hit_02, self.sound_hit_03, self.sound_hit_04]
 
     def sprite(self, key):
         animation_dict = {
@@ -103,6 +113,8 @@ class StructureAssets:
         }
         return animation_dict[key]
 
+    def load_sound(self):
+        pass
 
 #   ______   .______          __   _______   ______ .___________.    _______.
 #  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
@@ -131,7 +143,7 @@ class ObjActor:
         :param x: starting x position on the current map
         :param y: starting y position on the current map
         :param name_object: string containing the name of the object, "chair" or "goblin" for example.
-        :param animation_key: A list of images that make up the object's sprite sheet. Created with StructureAssets class.
+        :param animation_key: A list of images that make up the object's sprite sheet.
         :param animation_speed: Time in seconds it takes to loop through the object animation.
         :param creature: any object that has health, and generally can fight
         :param ai: ai is a component that executes an action every time the object is able to act
@@ -181,7 +193,6 @@ class ObjActor:
         self.stairs = stairs
         if self.stairs:
             self.stairs.owner = self
-
 
     @property
     def display_name(self):
@@ -548,6 +559,9 @@ class ComponentCreature:
         game_message(message, constants.COLOR_RED)
         target.creature.take_damage(damage_dealt)
 
+        if damage_dealt > 0 and self.owner is PLAYER:
+            pygame.mixer.Sound.play(RANDOM_ENGINE.choice(ASSETS.sound_hit_list))
+
     @property
     def power(self):
         """
@@ -584,7 +598,7 @@ class ComponentCreature:
         :param damage: damage taken by the creature
         """
         self.hp -= damage
-        message = f"{self.name_instance}'s health is {self.hp}/{self.max_hp}"
+        message = f"{self.owner.display_name}'s health is {self.hp}/{self.max_hp}"
         game_message(message, constants.COLOR_WHITE)
 
         if self.hp <= 0:
@@ -1376,6 +1390,15 @@ def menu_main():
         'alignment': 'center',
     }
 
+    footer = {
+        'display_surface': SURFACE_MAIN,
+        'text_to_display': 'music by icons8.com',
+        'font': constants.FONT_MESSAGE_TEXT,
+        'coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT - 40),
+        'text_color': constants.COLOR_GREY,
+        'alignment': 'center',
+    }
+
     button_attributes = {
         'surface': SURFACE_MAIN,
         'button_text': 'Start Game',
@@ -1383,6 +1406,15 @@ def menu_main():
         'center_coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2 + 20)
     }
     test_button = UIButton(**button_attributes)
+
+    # draw menu
+    SURFACE_MAIN.fill(constants.COLOR_BLACK)
+    draw_text(**game_title)
+    draw_text(**footer)
+
+    # loads theme music
+    pygame.mixer.music.load(ASSETS.music_background)
+    pygame.mixer.music.play(loops=-1)
 
     menu_running = True
     while menu_running:
@@ -1399,16 +1431,12 @@ def menu_main():
 
         # button updates
         if test_button.update(game_input):
+            pygame.mixer.music.stop()
             game_start()
 
-        # draw menu
-        SURFACE_MAIN.fill(constants.COLOR_BLACK)
-        draw_text(**game_title)
-        test_button.draw()
-
         # update surfaces
+        test_button.draw()
         pygame.display.flip()
-
 
 
 def menu_pause():
@@ -1875,12 +1903,12 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, SURFACE_MAP, CLOCK, FOV_CALCULATE, PLAYER, ASSETS, CAMERA
+    global SURFACE_MAIN, SURFACE_MAP, CLOCK, FOV_CALCULATE, PLAYER, ASSETS, CAMERA, RANDOM_ENGINE
 
     # initialize pygame
     pygame.init()
     pygame.key.set_repeat(200, 70)
-    tcod.namegen_parse('data/celtic.cfg')
+    tcod.namegen_parse('data/namegen/celtic.cfg')
 
     # create display surface with a given Height, and Width
     SURFACE_MAIN = pygame.display.set_mode((constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT))
@@ -1898,6 +1926,9 @@ def game_initialize():
 
     # CLOCK tracks and limits CPU cycles
     CLOCK = pygame.time.Clock()
+
+    # RANDOM NUMBER ENGINE
+    RANDOM_ENGINE = random.SystemRandom()
 
     # When FOV is true, FOV recalculates
     FOV_CALCULATE = True
@@ -1918,7 +1949,7 @@ def game_handle_keys():
     events = pygame.event.get()
 
     # Check for mod key
-    MOD_KEY = keys_list[pygame.K_RSHIFT] or keys_list[pygame.K_LSHIFT]
+    mod_key = keys_list[pygame.K_RSHIFT] or keys_list[pygame.K_LSHIFT]
 
     for event in events:
         # Quit game if player closes window
@@ -1965,12 +1996,11 @@ def game_handle_keys():
             if event.key == pygame.K_l:
                 menu_tile_select()
             # Go down or up stairs by pressing "SHIT + ."
-            if MOD_KEY and event.key == pygame.K_PERIOD:
+            if mod_key and event.key == pygame.K_PERIOD:
                 objects_at_player = map_objects_at_coordinates(PLAYER.x, PLAYER.y)
                 for obj in objects_at_player:
                     if obj.stairs:
                         obj.stairs.use()
-
 
     return 'no-action'
 
