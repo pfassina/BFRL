@@ -34,12 +34,24 @@ class StructureTile:
         self.explored = False
 
 
+class StructurePreferences:
+
+    def __init__(self):
+
+        self.volume_sound = .5
+        self.volume_music = .5
+
+
 class StructureAssets:
     """
     This class is a structure that holds all assets used in the game. This includes sprites, sound effects, and music.
     """
 
     def __init__(self):
+        self.load_assets()
+        self.sound_adjust()
+
+    def load_assets(self):
 
         # Sprite Sheets
         self.ss_player = ObjectSpriteSheet('data/graphics/reptiles.png')
@@ -86,10 +98,10 @@ class StructureAssets:
         self.sound_list = []
 
         self.music_background = 'data/audio/main_music.mp3'
-        self.sound_hit_01 = self.add_sound('data/audio/hit_01.wav')
-        self.sound_hit_02 = self.add_sound('data/audio/hit_02.wav')
-        self.sound_hit_03 = self.add_sound('data/audio/hit_03.wav')
-        self.sound_hit_04 = self.add_sound('data/audio/hit_04.wav')
+        self.sound_hit_01 = self.sound_add('data/audio/hit_01.wav')
+        self.sound_hit_02 = self.sound_add('data/audio/hit_02.wav')
+        self.sound_hit_03 = self.sound_add('data/audio/hit_03.wav')
+        self.sound_hit_04 = self.sound_add('data/audio/hit_04.wav')
 
         self.sound_hit_list = [self.sound_hit_01, self.sound_hit_02, self.sound_hit_03, self.sound_hit_04]
 
@@ -120,10 +132,17 @@ class StructureAssets:
         }
         return animation_dict[key]
 
-    def add_sound(self, file):
+    def sound_add(self, file):
         new_sound = pygame.mixer.Sound(file)
         self.sound_list.append(new_sound)
         return new_sound
+
+    def sound_adjust(self):
+
+        for sound in self.sound_list:
+            sound.set_volume(PREFERENCES.volume_sound)
+
+        pygame.mixer.music.set_volume(PREFERENCES.volume_music)
 
 #   ______   .______          __   _______   ______ .___________.    _______.
 #  /  __  \  |   _  \        |  | |   ____| /      ||           |   /       |
@@ -842,6 +861,7 @@ def def_mouse(mouse):
     game_message(message, constants.COLOR_GREY)
     mouse.animation_key = 'S_FLESH_02'
     mouse.animation = ASSETS.sprite('S_FLESH_02')
+    mouse.name_object = 'Yummy meat'
     mouse.creature = None
     mouse.ai = None
 
@@ -1397,7 +1417,7 @@ class UISlider:
         self.fg_rect.topleft = self.bg_rect.topleft
 
         self.grip_rect = pygame.Rect((0, 0), (10, self.bg_rect.height + 8))
-        self.grip_rect.center = self.center_coordinates
+        self.grip_rect.center = self.fg_rect.midright
 
     def update(self, player_input):
 
@@ -1563,17 +1583,54 @@ def menu_options():
     settings_menu_surface = pygame.Surface((settings_menu_width, settings_menu_height))
     settings_menu_rect = pygame.Rect(0, 0, settings_menu_width, settings_menu_width)
     settings_menu_rect.center = window_center
+    menu_center_x, menu_center_y = settings_menu_rect.center
 
-    slider_attributes = {
+    # Define Sound Settings Slider
+    slider_sound_text = {
+        'display_surface': SURFACE_MAIN,
+        'text_to_display': 'sound',
+        'font': constants.FONT_MESSAGE_TEXT,
+        'coordinates': (menu_center_x, menu_center_y - 60),
+        'text_color': constants.COLOR_WHITE,
+        'alignment': 'center',
+    }
+    slider_sound_attributes = {
         'size': (125, 15),
         'surface': SURFACE_MAIN,
-        'center_coordinates': window_center,
+        'center_coordinates': (menu_center_x, menu_center_y - 40),
         'color_background': constants.COLOR_WHITE,
         'color_foreground': constants.COLOR_GREEN,
-        'value': 0.5
+        'value': PREFERENCES.volume_sound
     }
+    slider_sound = UISlider(**slider_sound_attributes)
 
-    slider = UISlider(**slider_attributes)
+    # Define Music Settings Slider
+    slider_music_text = {
+        'display_surface': SURFACE_MAIN,
+        'text_to_display': 'music',
+        'font': constants.FONT_MESSAGE_TEXT,
+        'coordinates': (menu_center_x, menu_center_y),
+        'text_color': constants.COLOR_WHITE,
+        'alignment': 'center',
+    }
+    slider_music_attributes = {
+        'size': (125, 15),
+        'surface': SURFACE_MAIN,
+        'center_coordinates': (menu_center_x, menu_center_y + 20),
+        'color_background': constants.COLOR_WHITE,
+        'color_foreground': constants.COLOR_GREEN,
+        'value': PREFERENCES.volume_music
+    }
+    slider_music = UISlider(**slider_music_attributes)
+
+    # Create save preferences button
+    save_preferences_button_attributes = {
+        'surface': SURFACE_MAIN,
+        'button_text': 'save',
+        'size': (100, 35),
+        'center_coordinates': (menu_center_x, menu_center_y + 70)
+    }
+    save_preferences_button = UIButton(**save_preferences_button_attributes)
 
     menu_close = False
     while not menu_close:
@@ -1583,16 +1640,37 @@ def menu_options():
 
         game_input = (list_of_events, mouse_position)
 
-        for event in list_of_events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    menu_close = True
+        # for event in list_of_events:
+        #     if event.type == pygame.KEYDOWN:
+        #         if event.key == pygame.K_ESCAPE:
+        #             menu_close = True
 
-        slider.update(game_input)
+        slider_sound.update(game_input)
+        if PREFERENCES.volume_sound != slider_sound.value:
+            PREFERENCES.volume_sound = slider_sound.value
+            ASSETS.sound_adjust()
+
+        slider_music.update(game_input)
+        if PREFERENCES.volume_music != slider_music.value:
+            PREFERENCES.volume_music = slider_music.value
+            ASSETS.sound_adjust()
+
+        if save_preferences_button.update(game_input):
+            game_preferences_save()
+            menu_close = True
+
 
         settings_menu_surface.fill(settings_menu_bgcolor)
         SURFACE_MAIN.blit(settings_menu_surface, settings_menu_rect.topleft)
-        slider.draw()
+
+        draw_text(**slider_sound_text)
+        slider_sound.draw()
+
+        draw_text(**slider_music_text)
+        slider_music.draw()
+
+        save_preferences_button.draw()
+
         pygame.display.update()
 
 
@@ -2060,12 +2138,18 @@ def game_initialize():
     Initializes the main window and pygame
     """
 
-    global SURFACE_MAIN, SURFACE_MAP, CLOCK, FOV_CALCULATE, PLAYER, ASSETS, CAMERA, RANDOM_ENGINE
+    global PREFERENCES, SURFACE_MAIN, SURFACE_MAP, CAMERA, ASSETS, CLOCK, RANDOM_ENGINE, FOV_CALCULATE
 
     # initialize pygame
     pygame.init()
     pygame.key.set_repeat(200, 70)
     tcod.namegen_parse('data/namegen/celtic.cfg')
+
+    # PREFERENCES tracks user preferences
+    try:
+        game_preferences_load()
+    except FileNotFoundError:
+        PREFERENCES = StructurePreferences()
 
     # create display surface with a given Height, and Width
     SURFACE_MAIN = pygame.display.set_mode((constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT))
@@ -2195,7 +2279,7 @@ def game_save():
     for obj in GAME.current_objects:
         obj.animation = None
 
-    with gzip.open('savegame/savegame', 'wb') as file:
+    with gzip.open('data/savegame', 'wb') as file:
         pickle.dump([GAME, PLAYER], file)
 
 
@@ -2203,7 +2287,7 @@ def game_load():
 
     global GAME, PLAYER
 
-    with gzip.open('savegame/savegame', 'rb') as file:
+    with gzip.open('data/savegame', 'rb') as file:
         GAME, PLAYER = pickle.load(file)
 
     for obj in GAME.current_objects:
@@ -2211,6 +2295,20 @@ def game_load():
 
     # make FOV
     map_make_fov(GAME.current_map)
+
+
+def game_preferences_save():
+
+    with gzip.open('data/preferences', 'wb') as file:
+        pickle.dump(PREFERENCES, file)
+
+
+def game_preferences_load():
+
+    global PREFERENCES
+
+    with gzip.open('data/preferences', 'rb') as file:
+        PREFERENCES = pickle.load(file)
 
 
 def game_exit():
