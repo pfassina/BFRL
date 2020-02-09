@@ -146,4 +146,5 @@ About
 .idea/
 
 # save game data
-/savegame/savegame
+/data/savegame
+/data/legacy/

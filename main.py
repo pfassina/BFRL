@@ -1,4 +1,5 @@
 # modules
+from datetime import date
 import gzip
 import math
 import numpy as np
@@ -165,7 +166,7 @@ class ObjActor:
     ** METHODS **
     obj_Actor.draw() : this method draws the object to the screen.
     """
-    def __init__(self, x, y, name_object, animation_key, animation_speed=0.5,
+    def __init__(self, x, y, name_object, animation_key, animation_speed=0.5, depth=0, state=None,
                  creature=None, ai=None, container=None, item=None, equipment=None, stairs=None):
         """
         :param x: starting x position on the current map
@@ -193,6 +194,11 @@ class ObjActor:
         self.flicker_speed = self.animation_speed / len(self.animation)
         self.flicker_timer = 0.0
         self.sprite_image = 0
+
+        # Draw depth relative to surface
+        self.depth = depth
+
+        self.state = state
 
         self.creature = creature
         if self.creature:
@@ -841,6 +847,33 @@ class AIFlee:
 #
 
 
+def death_player(player):
+
+    player.state = 'STATUS DEAD'
+
+    SURFACE_MAIN.fill(constants.COLOR_BLACK)
+    death_text = {
+        'display_surface': SURFACE_MAIN,
+        'text_to_display': 'YOU DIED!',
+        'font': constants.FONT_TITLE_SCREEN,
+        'coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2),
+        'text_color': constants.COLOR_WHITE,
+        'alignment': 'center',
+    }
+    draw_text(**death_text)
+
+    filename = f"{PLAYER.display_name}-{date.today().strftime('%Y%m%d')}.txt"
+    with open(f'data/legacy/{filename}', 'a+') as legacy_file:
+        for msg, _ in GAME.message_history:
+            legacy_file.write(f'{msg}\n')
+
+    milliseconds_passed = 0
+    while milliseconds_passed <= 2000:
+        pygame.event.get()
+        milliseconds_passed += CLOCK.tick(constants.GAME_FPS)
+        pygame.display.update()
+
+
 def death_monster(monster):
     """
     On death, most monsters stop moving.
@@ -851,6 +884,7 @@ def death_monster(monster):
     game_message(message, constants.COLOR_GREY)
     monster.animation_key = 'S_FLESH_01'
     monster.animation = ASSETS.sprite('S_FLESH_01')
+    monster.depth = constants.DEPTH_CORPSE
     monster.creature = None
     monster.ai = None
 
@@ -862,6 +896,7 @@ def def_mouse(mouse):
     mouse.animation_key = 'S_FLESH_02'
     mouse.animation = ASSETS.sprite('S_FLESH_02')
     mouse.name_object = 'Yummy meat'
+    mouse.depth = constants.DEPTH_CORPSE
     mouse.creature = None
     mouse.ai = None
 
@@ -1077,7 +1112,7 @@ def draw_game():
     draw_map(GAME.current_map)
 
     # draw the characters
-    for obj in GAME.current_objects:
+    for obj in sorted(GAME.current_objects, key=(lambda x: x.depth), reverse=True):
         obj.draw()
 
     SURFACE_MAIN.blit(SURFACE_MAP, (0, 0), CAMERA.rectangle)
@@ -1522,11 +1557,6 @@ def menu_main():
     }
     quit_button = UIButton(**quit_button_attributes)
 
-    # draw menu
-    SURFACE_MAIN.blit(ASSETS.main_menu_bg, (0, 0))
-    draw_text(**game_title)
-    draw_text(**footer)
-
     # loads theme music
     pygame.mixer.music.load(ASSETS.music_background)
     pygame.mixer.music.play(loops=-1)
@@ -1555,21 +1585,23 @@ def menu_main():
 
         if options_button.update(game_input):
             menu_options()
-            SURFACE_MAIN.blit(ASSETS.main_menu_bg, (0, 0))
-            draw_text(**game_title)
-            draw_text(**footer)
 
         if quit_button.update(game_input):
             pygame.mixer.music.stop()
             pygame.quit()
             sys.exit()
 
+        # draw menu
+        SURFACE_MAIN.blit(ASSETS.main_menu_bg, (0, 0))
+        draw_text(**game_title)
+        draw_text(**footer)
+
         # update surfaces
         continue_button.draw()
         new_game_button.draw()
         options_button.draw()
         quit_button.draw()
-        pygame.display.flip()
+        pygame.display.update()
 
 
 def menu_options():
@@ -1658,7 +1690,6 @@ def menu_options():
         if save_preferences_button.update(game_input):
             game_preferences_save()
             menu_close = True
-
 
         settings_menu_surface.fill(settings_menu_bgcolor)
         SURFACE_MAIN.blit(settings_menu_surface, settings_menu_rect.topleft)
@@ -1899,9 +1930,10 @@ def gen_player(coordinates):
     x, y = coordinates
 
     bag = ComponentContainer()
-    creature_component = ComponentCreature('Greg', base_attack=4)
+    creature_component = ComponentCreature('Greg', base_attack=4, death_function=death_player)
 
-    PLAYER = ObjActor(x, y, 'Python', 'A_PLAYER', animation_speed=1, creature=creature_component, container=bag)
+    PLAYER = ObjActor(x, y, 'Python', 'A_PLAYER',
+                      animation_speed=1, creature=creature_component,container=bag, depth=constants.DEPTH_PLAYER)
     GAME.current_objects.append(PLAYER)
 
     return PLAYER
@@ -1912,10 +1944,12 @@ def gen_stairs(coordinates, downwards=True):
     x, y = coordinates
     if downwards:
         stairs_component = ComponentStairs()
-        stairs = ObjActor(x, y, 'stairs down', animation_key='S_STAIRS_DOWN', stairs=stairs_component)
+        stairs = ObjActor(x, y, 'stairs down', animation_key='S_STAIRS_DOWN',
+                          stairs=stairs_component, depth=constants.DEPTH_STAIRS)
     else:
         stairs_component = ComponentStairs(downwards)
-        stairs = ObjActor(x, y, 'stairs up', animation_key='S_STAIRS_UP', stairs=stairs_component)
+        stairs = ObjActor(x, y, 'stairs up', animation_key='S_STAIRS_UP',
+                          stairs=stairs_component, depth=constants.DEPTH_STAIRS)
 
     GAME.current_objects.append(stairs)
 
@@ -1946,7 +1980,7 @@ def gen_scroll_lightning(coordinates):
     spell_range = tcod.random_get_int(None, 7, 8)
 
     item_component = ComponentItem(use_function=cast_lightning, value=(spell_damage, spell_range))
-    scroll = ObjActor(x, y, "Lightning scroll", 'S_SCROLL_01', item=item_component)
+    scroll = ObjActor(x, y, "Lightning scroll", 'S_SCROLL_01', item=item_component, depth=constants.DEPTH_ITEMS)
 
     return scroll
 
@@ -1960,7 +1994,7 @@ def gen_scroll_fireball(coordinates):
     spell_range = tcod.random_get_int(None, 9, 12)
 
     item_component = ComponentItem(use_function=cast_fireball, value=(spell_damage, spell_radius, spell_range))
-    scroll = ObjActor(x, y, "Fireball scroll", 'S_SCROLL_02', item=item_component)
+    scroll = ObjActor(x, y, "Fireball scroll", 'S_SCROLL_02', item=item_component, depth=constants.DEPTH_ITEMS)
 
     return scroll
 
@@ -1972,7 +2006,7 @@ def gen_scroll_confusion(coordinates):
     effect_length = tcod.random_get_int(None, 5, 10)
 
     item_component = ComponentItem(use_function=cast_confusion, value=effect_length)
-    scroll = ObjActor(x, y, "Confusion scroll", 'S_SCROLL_03', item=item_component)
+    scroll = ObjActor(x, y, "Confusion scroll", 'S_SCROLL_03', item=item_component, depth=constants.DEPTH_ITEMS)
 
     return scroll
 
@@ -1984,7 +2018,7 @@ def gen_weapon_sword(coordinates):
     bonus = tcod.random_get_int(None, 1, 2)
 
     equipment_component = ComponentEquipment(attack_bonus=bonus, slot='hand_right')
-    sword = ObjActor(x, y, "sword", 'S_SWORD', equipment=equipment_component)
+    sword = ObjActor(x, y, "sword", 'S_SWORD', equipment=equipment_component, depth=constants.DEPTH_ITEMS)
 
     return sword
 
@@ -1996,7 +2030,7 @@ def gen_armor_shield(coordinates):
     bonus = tcod.random_get_int(None, 1, 2)
 
     equipment_component = ComponentEquipment(defense_bonus=bonus, slot='hand_left')
-    shield = ObjActor(x, y, "shield", 'S_SHIELD', equipment=equipment_component)
+    shield = ObjActor(x, y, "shield", 'S_SHIELD', equipment=equipment_component, depth=constants.DEPTH_ITEMS)
 
     return shield
 
@@ -2034,6 +2068,7 @@ def gen_snake_anaconda(coordinates):
         'name_object': 'anaconda',
         'animation_key': 'A_SNAKE_01',
         'animation_speed': 1,
+        'depth': constants.DEPTH_CREATURES,
         'creature': ComponentCreature(**creature_attributes),
         'ai': AIChase(),
     }
@@ -2060,6 +2095,7 @@ def gen_snake_cobra(coordinates):
         'name_object': 'cobra',
         'animation_key': 'A_SNAKE_02',
         'animation_speed': 1,
+        'depth': constants.DEPTH_CREATURES,
         'creature': ComponentCreature(**creature_attributes),
         'ai': AIChase(),
     }
@@ -2086,6 +2122,7 @@ def gen_mouse(coordinates):
         'name_object': 'mouse',
         'animation_key': 'A_MOUSE_01',
         'animation_speed': 1,
+        'depth': constants.DEPTH_CREATURES,
         'creature': ComponentCreature(**creature_attributes),
         'ai': AIFlee(),
         'item': ComponentItem(use_function=cast_heal, value=5),
@@ -2123,6 +2160,9 @@ def game_main_loop():
             for obj in GAME.current_objects:
                 if obj.ai:
                     obj.ai.take_turn()
+
+        if PLAYER.state == 'STATUS DEAD':
+            game_quit = True
 
         # draw the game
         draw_game()
