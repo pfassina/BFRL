@@ -149,3 +149,4 @@ About
 /data/savegame
 /data/preferences
 /data/legacy/*
+/debug.py

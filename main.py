@@ -3,11 +3,13 @@ from datetime import date
 import gzip
 import math
 import numpy as np
+import os
 import pickle
 import pygame
 import random
 import sys
 import tcod
+import yaml
 
 # game files
 import constants
@@ -49,89 +51,66 @@ class StructureAssets:
     """
 
     def __init__(self):
+
+        with open('data/assets.yaml', 'r') as assets_file:
+            self.game_assets = yaml.full_load(assets_file)
+
+        self.sound_list = []
+        self.sound_hit_list = []
+
         self.load_assets()
         self.sound_adjust()
 
     def load_assets(self):
 
-        # Sprite Sheets
-        self.ss_player = ObjectSpriteSheet('data/graphics/reptiles.png')
-        self.ss_enemy = ObjectSpriteSheet('data/graphics/reptiles.png')
-        self.ss_items = ObjectSpriteSheet('data/graphics/scroll.png')
-        self.ss_flesh = ObjectSpriteSheet('data/graphics/flesh.png')
-        self.ss_tile = ObjectSpriteSheet('data/graphics/tile.png')
+        def get_attributes(attribute_dictionary, actor=True):
 
-        # Animations
-        self.A_PLAYER = self.ss_player.get_animation('m', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
-        self.A_SNAKE_01 = self.ss_enemy.get_animation('e', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
-        self.A_SNAKE_02 = self.ss_enemy.get_animation('k', 5, width=16, height=16, num_sprites=2, scale=(32, 32))
-        self.A_MOUSE_01 = self.ss_enemy.get_animation('g', 11, width=16, height=16, num_sprites=2, scale=(32, 32))
+            sprite_attributes = {
+                'column': attribute_dictionary.get('column'),
+                'row': attribute_dictionary.get('row'),
+                'width': attribute_dictionary.get('width'),
+                'height': attribute_dictionary.get('height'),
+                'scale': attribute_dictionary.get('scale'),
+            }
+            if actor:
+                sprite_attributes['num_sprites'] = attribute_dictionary.get('num_sprites')
 
-        # Tiles
-        self.S_WALL = pygame.image.load('data/graphics/wall.jpg')
-        self.S_WALL_EXPLORED = pygame.image.load('data/graphics/wall_explored.png')
+            return sprite_attributes
 
-        self.S_FLOOR = pygame.image.load('data/graphics/floor.png')
-        self.S_FLOOR_EXPLORED = pygame.image.load('data/graphics/floor_explored.png')
-
-        self.S_STAIRS_UP = self.ss_tile.get_animation('d', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_STAIRS_DOWN = self.ss_tile.get_animation('f', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
-
-        # Items
-        sword_img = pygame.image.load('data/graphics/sword.png')
-        self.S_SWORD = [pygame.transform.scale(sword_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
-
-        shield_img = pygame.image.load('data/graphics/shield.png')
-        self.S_SHIELD = [pygame.transform.scale(shield_img, (constants.CELL_WIDTH, constants.CELL_HEIGHT))]
-
-        self.S_SCROLL_01 = self.ss_items.get_animation('d', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_SCROLL_02 = self.ss_items.get_animation('b', 1, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_SCROLL_03 = self.ss_items.get_animation('c', 5, width=16, height=16, num_sprites=1, scale=(32, 32))
-
-        self.S_FLESH_01 = self.ss_flesh.get_animation('a', 3, width=16, height=16, num_sprites=1, scale=(32, 32))
-        self.S_FLESH_02 = self.ss_flesh.get_animation('c', 0, width=16, height=16, num_sprites=1, scale=(32, 32))
-
-        # Special
-        menu_bg_img = pygame.image.load('data/graphics/menu_bg.jpg')
-        self.main_menu_bg = pygame.transform.scale(menu_bg_img, (constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT))
-
-        # Audio
-        self.sound_list = []
-
-        self.music_background = 'data/audio/main_music.mp3'
-        self.sound_hit_01 = self.sound_add('data/audio/hit_01.wav')
-        self.sound_hit_02 = self.sound_add('data/audio/hit_02.wav')
-        self.sound_hit_03 = self.sound_add('data/audio/hit_03.wav')
-        self.sound_hit_04 = self.sound_add('data/audio/hit_04.wav')
-
-        self.sound_hit_list = [self.sound_hit_01, self.sound_hit_02, self.sound_hit_03, self.sound_hit_04]
+        for category, assets in self.game_assets.items():
+            for asset, attributes in assets.items():
+                if category == 'sprite_sheets':
+                    self.__setattr__(asset, ObjectSpriteSheet(attributes))
+                elif category == 'tiles':
+                    sheet = self.__getattribute__(attributes.get('sheet'))
+                    tile_attributes = get_attributes(attributes, actor=False)
+                    self.__setattr__(asset, sheet.get_image(**tile_attributes))
+                elif category in ('characters', 'items', 'special'):
+                    sheet = self.__getattribute__(attributes.get('sheet'))
+                    asset_attributes = get_attributes(attributes)
+                    self.__setattr__(asset, sheet.get_animation(**asset_attributes))
+                elif category == 'bg_image':
+                    image = pygame.image.load(attributes['image'])
+                    scale = (constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT)
+                    image_scaled = pygame.transform.scale(image, scale)
+                    self.__setattr__(asset, image_scaled)
+                elif category == 'music':
+                    self.__setattr__(asset, attributes)
+                elif category == 'sound':
+                    sound_type = attributes.get('type')
+                    sound_path = attributes.get('path')
+                    self.__setattr__(asset, self.sound_add(sound_path))
+                    if sound_type == 'hit':
+                        self.sound_hit_list.append(self.__getattribute__(asset))
 
     def sprite(self, key):
-        animation_dict = {
-            # creatures
-            'A_PLAYER': self.A_PLAYER,
-            'A_SNAKE_01': self.A_SNAKE_01,
-            'A_SNAKE_02': self.A_SNAKE_02,
-            'A_MOUSE_01': self.A_MOUSE_01,
 
-            # tiles
-            'S_WALL': self.S_WALL,
-            'S_WALL_EXPLORED': self.S_WALL_EXPLORED,
-            'S_FLOOR': self.S_FLOOR,
-            'S_FLOOR_EXPLORED': self.S_FLOOR_EXPLORED,
-            'S_STAIRS_UP': self.S_STAIRS_UP,
-            'S_STAIRS_DOWN': self.S_STAIRS_DOWN,
+        sprite_dictionary = {}
+        for category in self.game_assets.values():
+            for asset in category.keys():
+                sprite_dictionary[asset] = self.__getattribute__(asset)
 
-            # items
-            'S_SWORD': self.S_SWORD,
-            'S_SHIELD': self.S_SHIELD,
-            'S_SCROLL_01': self.S_SCROLL_01,
-            'S_SCROLL_02': self.S_SCROLL_02,
-            'S_SCROLL_03': self.S_SCROLL_03,
-            'S_FLESH_01': self.S_FLESH_01,
-            'S_FLESH_02': self.S_FLESH_02,
-        }
-        return animation_dict[key]
+        return sprite_dictionary[key]
 
     def sound_add(self, file):
         new_sound = pygame.mixer.Sound(file)
@@ -167,7 +146,8 @@ class ObjActor:
     obj_Actor.draw() : this method draws the object to the screen.
     """
     def __init__(self, x, y, name_object, animation_key, animation_speed=0.5, depth=0, state=None,
-                 creature=None, ai=None, container=None, item=None, equipment=None, stairs=None):
+                 creature=None, ai=None, container=None, item=None, equipment=None, stairs=None,
+                 exit_portal=None):
         """
         :param x: starting x position on the current map
         :param y: starting y position on the current map
@@ -227,6 +207,10 @@ class ObjActor:
         self.stairs = stairs
         if self.stairs:
             self.stairs.owner = self
+
+        self.exit_portal = exit_portal
+        if self.exit_portal:
+            self.exit_portal.owner = self
 
     @property
     def display_name(self):
@@ -461,8 +445,6 @@ class ObjectSpriteSheet:
         :return: list of sprites to be animated
         """
 
-        sprite_list = []
-
         image = pygame.Surface([width, height]).convert()
         image.blit(self.sprite_sheet, (0, 0), (self.tile_dictionary[column] * width, row * height, width, height))
         image.set_colorkey(constants.COLOR_BLACK)
@@ -471,9 +453,7 @@ class ObjectSpriteSheet:
             (new_width, new_height) = scale
             image = pygame.transform.scale(image, (new_width, new_height))
 
-        sprite_list.append(image)
-
-        return sprite_list
+        return image
 
     def get_animation(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, num_sprites=1,
                       scale=None):
@@ -588,7 +568,7 @@ class ComponentCreature:
         Allows the creature to attack a target
         :param target: object attacked by the creature
         """
-        damage_dealt = self.power - target.creature.defense
+        damage_dealt = max(self.power - target.creature.defense, 0)
         message = f'{self.name_instance} attacks {target.creature.name_instance} for {damage_dealt} damage!'
         game_message(message, constants.COLOR_RED)
         target.creature.take_damage(damage_dealt)
@@ -784,6 +764,55 @@ class ComponentStairs:
             GAME.transition_previous()
 
 
+class ComponentExitPortal:
+
+    def __init__(self):
+        self.open_sprite = 'S_PORTAL_OPEN'
+        self.closed_sprite = 'S_PORTAL_CLOSED'
+        self.found_lamp = False
+
+    def update(self):
+
+        for obj in PLAYER.container.inventory:
+            if obj.name_object == 'The Lamp' and self.owner.state != 'OPEN':
+                self.found_lamp = True
+                self.owner.state = 'OPEN'
+                self.owner.animation_key = self.open_sprite
+                self.owner.animation = ASSETS.sprite(self.open_sprite)
+
+        if not self.found_lamp and self.owner.state == 'OPEN':
+            self.owner.state = 'CLOSED'
+            self.owner.animation_key = self.closed_sprite
+            self.owner.animation = ASSETS.sprite(self.closed_sprite)
+
+    def use(self):
+
+        if self.found_lamp:
+
+            PLAYER.state = 'STATUS WIN'
+            SURFACE_MAIN.fill(constants.COLOR_BLACK)
+            win_text = {
+                'display_surface': SURFACE_MAIN,
+                'text_to_display': 'YOU WON!',
+                'font': constants.FONT_TITLE_SCREEN,
+                'coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2),
+                'text_color': constants.COLOR_WHITE,
+                'alignment': 'center',
+            }
+            draw_text(**win_text)
+
+            filename = f"{PLAYER.display_name}-{date.today().strftime('%Y%m%d')}.txt"
+            with open(f'data/legacy/{filename}', 'a+') as legacy_file:
+                for msg, _ in GAME.message_history:
+                    legacy_file.write(f'{msg}\n')
+
+            milliseconds_passed = 0
+            while milliseconds_passed <= 2000:
+                pygame.event.get()
+                milliseconds_passed += CLOCK.tick(constants.GAME_FPS)
+                pygame.display.update()
+
+
 #      ___       __
 #     /   \     |  |
 #    /  ^  \    |  |
@@ -971,17 +1000,24 @@ def map_create_tunnel(new_map, room1, room2):
 
 def map_place_objects(room_list):
 
-    top_level = (len(GAME.maps_previous) == 0)
+    current_level = len(GAME.maps_previous) + 1
+    first_level = (current_level == 1)
+    final_level = (current_level == constants.MAP_LEVELS)
+
     rooms = len(room_list) - 1
-    for index, room in enumerate(room_list):
-        if index == 0:
+    for room_number, room in enumerate(room_list):
+        if room_number == 0:
             PLAYER.x, PLAYER.y = room.center
-            if not top_level:
+            if first_level:
+                gen_portal(room.center)
+            else:
                 gen_stairs(room.center, downwards=False)
             continue
-
-        if index == rooms:
-            gen_stairs(room.center)
+        elif room_number == rooms:
+            if final_level:
+                gen_lamp(room.center)
+            else:
+                gen_stairs(room.center)
 
         # Place a random enemy
         x = roll_dice(start=room.x1 + 1, sides=room.x2 - 1)
@@ -1140,6 +1176,9 @@ def draw_map(map_to_draw):
     render_height_max = int(camera_y + display_map_height / 2)
     render_height_max = min(render_height_max, constants.MAP_HEIGHT)
 
+    wall = {'default': ASSETS.__getattribute__('S_WALL'), 'explored': ASSETS.__getattribute__('S_WALL_EXPLORED')}
+    floor = {'default': ASSETS.__getattribute__('S_FLOOR'), 'explored': ASSETS.__getattribute__('S_FLOOR_EXPLORED')}
+
     for x in range(render_width_min, render_width_max):
         for y in range(render_height_min, render_height_max):
 
@@ -1148,15 +1187,15 @@ def draw_map(map_to_draw):
 
                 map_to_draw[x][y].explored = True
                 if map_to_draw[x][y].block_path:
-                    SURFACE_MAP.blit(ASSETS.S_WALL, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(wall.get('default'), (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
                 else:
-                    SURFACE_MAP.blit(ASSETS.S_FLOOR, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(floor.get('default'), (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 
             elif map_to_draw[x][y].explored:
                 if map_to_draw[x][y].block_path:
-                    SURFACE_MAP.blit(ASSETS.S_WALL_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(wall.get('explored'), (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
                 else:
-                    SURFACE_MAP.blit(ASSETS.S_FLOOR_EXPLORED, (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
+                    SURFACE_MAP.blit(floor.get('explored'), (x * constants.CELL_WIDTH, y * constants.CELL_HEIGHT))
 
 
 def draw_debug():
@@ -1933,10 +1972,29 @@ def gen_player(coordinates):
     creature_component = ComponentCreature('Greg', base_attack=4, death_function=death_player)
 
     PLAYER = ObjActor(x, y, 'Python', 'A_PLAYER',
-                      animation_speed=1, creature=creature_component,container=bag, depth=constants.DEPTH_PLAYER)
+                      animation_speed=1, creature=creature_component, container=bag, depth=constants.DEPTH_PLAYER)
     GAME.current_objects.append(PLAYER)
 
     return PLAYER
+
+
+def gen_portal(coordinates):
+
+    x, y = coordinates
+    exit_portal_component = ComponentExitPortal()
+    exit_portal = ObjActor(x, y, 'Exit Portal', animation_key='S_PORTAL_CLOSED',
+                           exit_portal=exit_portal_component, depth=constants.DEPTH_STAIRS)
+
+    GAME.current_objects.append(exit_portal)
+
+
+def gen_lamp(coordinates):
+
+    x, y = coordinates
+    item_component = ComponentItem()
+    lamp = ObjActor(x, y, 'The Lamp', animation_key='S_MAGIC_LAMP', item=item_component)
+
+    GAME.current_objects.append(lamp)
 
 
 def gen_stairs(coordinates, downwards=True):
@@ -2156,12 +2214,18 @@ def game_main_loop():
         if player_action == 'QUIT':
             game_exit()
 
-        elif player_action != 'no-action':
+        if player_action != 'no-action':
             for obj in GAME.current_objects:
                 if obj.ai:
                     obj.ai.take_turn()
+                if obj.exit_portal:
+                    obj.exit_portal.update()
 
-        if PLAYER.state == 'STATUS DEAD':
+        if PLAYER.state in ['STATUS DEAD', 'STATUS WIN']:
+            try:
+                os.remove('data/savegame')
+            except OSError:
+                pass
             game_quit = True
 
         # draw the game
@@ -2282,21 +2346,28 @@ def game_handle_keys():
                 for obj in objects_at_player:
                     if obj.stairs:
                         obj.stairs.use()
+                    if obj.exit_portal:
+                        obj.exit_portal.use()
 
     return 'no-action'
 
 
 def game_start(continue_game=True):
 
+    global FOV_CALCULATE
+
     # starts the game
     if continue_game:
         try:
             game_load()
+            FOV_CALCULATE = True
         except FileNotFoundError:
             game_new()
+            FOV_CALCULATE = True
             print('Game not found')
     else:
         game_new()
+        FOV_CALCULATE = True
     game_main_loop()
 
 

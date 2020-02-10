@@ -1,0 +1,202 @@
+# sprite sheets
+sprite_sheets:
+  ss_player: 'data/graphics/reptiles.png'
+  ss_enemy: 'data/graphics/reptiles.png'
+  ss_weapon: 'data/graphics/weapon.png'
+  ss_shield: 'data/graphics/shield.png'
+  ss_items: 'data/graphics/scroll.png'
+  ss_flesh: 'data/graphics/flesh.png'
+  ss_tile: 'data/graphics/tile.png'
+  ss_wall: 'data/graphics/wall.png'
+  ss_light: 'data/graphics/light.png'
+  ss_door: 'data/graphics/door.png'
+
+# Tiles
+tiles:
+  S_WALL:
+    sheet: ss_wall
+    column: 'c'
+    row: 3
+    width: 16
+    height: 16
+    scale: [32, 32]
+  S_WALL_EXPLORED:
+    sheet: ss_wall
+    column: 'c'
+    row: 9
+    width: 16
+    height: 16
+    scale: [32, 32]
+  S_FLOOR:
+    sheet: ss_tile
+    column: 'e'
+    row: 2
+    width: 16
+    height: 16
+    scale: [32, 32]
+  S_FLOOR_EXPLORED:
+    sheet: ss_tile
+    column: 'c'
+    row: 2
+    width: 16
+    height: 16
+    scale: [32, 32]
+
+# Character Sprites
+characters:
+  A_PLAYER:
+    sheet: ss_player
+    column: 'm'
+    row: 5
+    width: 16
+    height: 16
+    num_sprites: 2
+    scale: [32, 32]
+  A_SNAKE_01:
+    sheet: ss_enemy
+    column: 'e'
+    row: 5
+    width: 16
+    height: 16
+    num_sprites: 2
+    scale: [32, 32]
+  A_SNAKE_02:
+    sheet: ss_enemy
+    column: 'k'
+    row: 5
+    width: 16
+    height: 16
+    num_sprites: 2
+    scale: [32, 32]
+  A_MOUSE_01:
+    sheet: ss_enemy
+    column: 'g'
+    row: 11
+    width : 16
+    height: 16
+    num_sprites : 2
+    scale: [32, 32]
+
+# Items
+items:
+  S_SWORD:
+    sheet: ss_weapon
+    column: 'c'
+    row: 0
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_SHIELD:
+    sheet: ss_shield
+    column: 'e'
+    row: 0
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_SCROLL_01:
+    sheet: ss_items
+    column: 'd'
+    row: 0
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_SCROLL_02:
+    sheet: ss_items
+    column: 'b'
+    row: 1
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_SCROLL_03:
+    sheet: ss_items
+    column: 'c'
+    row: 5
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_FLESH_01:
+    sheet: ss_flesh
+    column: 'a'
+    row: 3
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_FLESH_02:
+    sheet: ss_flesh
+    column: 'c'
+    row: 0
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+
+# Special
+special:
+  S_STAIRS_UP:
+    sheet: ss_tile
+    column: 'd'
+    row: 3
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_STAIRS_DOWN:
+    sheet: ss_tile
+    column: 'f'
+    row: 3
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_MAGIC_LAMP:
+    sheet: ss_light
+    column: 'e'
+    row: 0
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_PORTAL_OPEN:
+    sheet: ss_door
+    column: 'e'
+    row: 5
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+  S_PORTAL_CLOSED:
+    sheet: ss_door
+    column: 'd'
+    row: 5
+    width: 16
+    height: 16
+    num_sprites: 1
+    scale: [32, 32]
+# Background Images
+bg_image:
+  main_menu_bg:
+    image: 'data/graphics/menu_bg.jpg'
+    scale:
+
+# Music & Sound
+music:
+  music_background: 'data/audio/main_music.mp3'
+sound:
+  sound_hit_01:
+    type: 'hit'
+    path: 'data/audio/hit_01.wav'
+  sound_hit_02:
+    type: 'hit'
+    path: 'data/audio/hit_02.wav'
+  sound_hit_03:
+    type: 'hit'
+    path: 'data/audio/hit_03.wav'
+  sound_hit_04:
+    type: 'hit'
+    path: 'data/audio/hit_04.wav'
