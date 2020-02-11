@@ -100,19 +100,45 @@ def assign_tiles(tile_map):
     for x in range(len(tile_map)):
         for y in range(len(tile_map[0])):
 
-            tile_assignment = 0
-            tile_is_wall = check_for_wall(tile_map, x, y)
-            if tile_is_wall:
-                if check_for_wall(tile_map, x, y - 1):
-                    tile_assignment += 1
-                if check_for_wall(tile_map, x + 1, y):
-                    tile_assignment += 2
-                if check_for_wall(tile_map, x, y + 1):
-                    tile_assignment += 4
-                if check_for_wall(tile_map, x - 1, y):
-                    tile_assignment += 8
+            if check_for_wall(tile_map, x, y):
 
-            tile_map[x][y].assignment = tile_assignment
+                pos_w = check_for_wall(tile_map, x - 1, y)
+                pos_e = check_for_wall(tile_map, x + 1, y)
+                pos_n = check_for_wall(tile_map, x, y + 1)
+                pos_s = check_for_wall(tile_map, x, y - 1)
+                pos_nw = check_for_wall(tile_map, x - 1, y - 1)
+                pos_sw = check_for_wall(tile_map, x - 1, y + 1)
+                pos_ne = check_for_wall(tile_map, x + 1, y - 1)
+                pos_se = check_for_wall(tile_map, x + 1, y + 1)
+
+                if pos_w & pos_e & pos_n & pos_s & pos_nw & pos_sw & pos_ne & pos_se:
+                    tile_map[x][y].assignment = 998
+                else:
+                    tile_map[x][y].assignment = 0
+
+            else:
+                tile_map[x][y].assignment = 999
+
+    for x in range(len(tile_map)):
+        for y in range(len(tile_map[0])):
+
+            if tile_map[x][y].assignment == 0:
+
+                tile_assignment = 0
+                if y - 1 >= 0:
+                    if tile_map[x][y - 1].assignment <= 99:
+                        tile_assignment += 1
+                if x + 1 < len(tile_map):
+                    if tile_map[x + 1][y].assignment <= 99:
+                        tile_assignment += 2
+                if y + 1 < len(tile_map[0]):
+                    if tile_map[x][y + 1].assignment <= 99:
+                        tile_assignment += 4
+                if x - 1 >= 0:
+                    if tile_map[x - 1][y].assignment <= 99:
+                        tile_assignment += 8
+
+                tile_map[x][y].assignment = tile_assignment
 
 
 def place_objects(room_list):
@@ -181,9 +207,7 @@ def check_for_wall(incoming_map, x, y):
     try:
         return incoming_map[x][y].block_path
     except IndexError:
-        return False
-
-
+        return True
 
 
 def make_fov(incoming_map):

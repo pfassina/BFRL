@@ -17,7 +17,7 @@ def player(coordinates):
     x, y = coordinates
 
     bag = actors.ComponentContainer()
-    creature_component = actors.ComponentCreature('Greg', base_attack=4, death_function=death.player)
+    creature_component = actors.ComponentCreature('Greg', base_attack=4, base_defense=10, death_function=death.player)
 
     globals.PLAYER = actors.ObjActor(x, y, 'Python', 'A_PLAYER',
                                      animation_speed=1, creature=creature_component,
