@@ -73,7 +73,7 @@ def main():
     quit_button = draw.UIButton(**quit_button_attributes)
 
     # loads theme music
-    pygame.mixer.music.load(globals.ASSETS.music_background)
+    pygame.mixer.music.load(globals.ASSETS.main_menu)
     pygame.mixer.music.play(loops=-1)
 
     menu_running = True

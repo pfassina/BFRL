@@ -30,12 +30,12 @@ tiles:
 
 # Walls
 walls:
-  sheet: ss_wall
-  width: 16
-  height: 16
-  scale: [32, 32]
-  sprites:
-    default:
+  default:
+    sheet: ss_wall
+    width: 16
+    height: 16
+    scale: [32, 32]
+    sprites:
       0: [1, 4] # pillar
       1: [0, 4] # north only
       2: [1, 3] # east only
@@ -53,16 +53,21 @@ walls:
       14: [4, 3] # west + south + east
       15: [4, 4] # west + south + east + north
       998: [3, 3] # all 8 coordinates
-    explored:
-      0: [3, 6]
-      1: [1, 7]
-      2: [1, 6] # flip 90
+  explored:
+    sheet: ss_wall
+    width: 16
+    height: 16
+    scale: [32, 32]
+    sprites:
+      0: [1, 7]
+      1: [0, 7]
+      2: [1, 6]
       3: [0, 8]
-      4: [0, 7] # flip 180
+      4: [0, 7]
       5: [0, 7]
       6: [0, 6]
       7: [3, 7]
-      8: [1, 6] # flip 270
+      8: [1, 6]
       9: [2, 8]
       10: [1, 6]
       11: [4, 8]
@@ -70,7 +75,7 @@ walls:
       13: [5, 7]
       14: [4, 6]
       15: [4, 7]
-      16: [6, 6]
+      998: [3, 6]
 
 # Character Sprites
 characters:
@@ -167,7 +172,7 @@ items:
     scale: [32, 32]
 
 # Special
-special:
+specials:
   S_STAIRS_UP:
     sheet: ss_tile
     column: 4
@@ -209,15 +214,15 @@ special:
     num_sprites: 1
     scale: [32, 32]
 # Background Images
-bg_image:
+bg_images:
   main_menu_bg:
     image: 'data/graphics/menu_bg.jpg'
     scale:
 
 # Music & Sound
 music:
-  music_background: 'data/audio/main_music.mp3'
-sound:
+  main_menu: 'data/audio/main_music.mp3'
+sounds:
   sound_hit_01:
     type: 'hit'
     path: 'data/audio/hit_01.wav'
