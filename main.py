@@ -21,8 +21,8 @@
 #                                            ################
 
 
-from lib import startup
-from lib import menu
+from bfrl import startup
+from bfrl import menu
 
 if __name__ == '__main__':
     startup.init()
