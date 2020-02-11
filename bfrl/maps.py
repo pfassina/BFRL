@@ -66,7 +66,9 @@ def create():
 
             list_of_rooms.append(new_room)
 
+    assign_tiles(new_map)
     make_fov(new_map)
+
     return new_map, list_of_rooms
 
 
@@ -91,6 +93,26 @@ def create_tunnel(new_map, room1, room2):
             new_map[x1][y].block_path = False
         for x in range(min(x1, x2), max(x1, x2) + 1):
             new_map[x][y2].block_path = False
+
+
+def assign_tiles(tile_map):
+
+    for x in range(len(tile_map)):
+        for y in range(len(tile_map[0])):
+
+            tile_assignment = 0
+            tile_is_wall = check_for_wall(tile_map, x, y)
+            if tile_is_wall:
+                if check_for_wall(tile_map, x, y - 1):
+                    tile_assignment += 1
+                if check_for_wall(tile_map, x + 1, y):
+                    tile_assignment += 2
+                if check_for_wall(tile_map, x, y + 1):
+                    tile_assignment += 4
+                if check_for_wall(tile_map, x - 1, y):
+                    tile_assignment += 8
+
+            tile_map[x][y].assignment = tile_assignment
 
 
 def place_objects(room_list):
@@ -147,15 +169,21 @@ def check_for_creature(x, y, exclude_object=None):
     return target
 
 
-def check_for_wall(x, y):
+def check_for_wall(incoming_map, x, y):
     """
     Checks if tile is wall
+    :param incoming_map: reference map
     :param x: tile x coordinate
     :param y: tile y coordinate
     :return: True if wall
     """
 
-    return globals.GAME.current_map[x][y].block_path
+    try:
+        return incoming_map[x][y].block_path
+    except IndexError:
+        return False
+
+
 
 
 def make_fov(incoming_map):

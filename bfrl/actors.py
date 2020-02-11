@@ -2,7 +2,6 @@
 from datetime import date
 import math
 import pygame
-# import tcod
 
 # game files
 from bfrl import constants

@@ -357,7 +357,7 @@ def tile_select(origin=None, max_range=None, ignore_walls=True, ignore_creatures
         for i, (x, y) in enumerate(list_of_tiles):
             if i == 0:
                 continue
-            if not ignore_walls and maps.check_for_wall(x, y):
+            if not ignore_walls and maps.check_for_wall(globals.GAME.current_map, x, y):
                 list_of_tiles = list_of_tiles[:i + 1]
                 break
             if not ignore_creatures and maps.check_for_creature(x, y):

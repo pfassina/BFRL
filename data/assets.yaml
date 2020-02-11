@@ -13,40 +13,70 @@ sprite_sheets:
 
 # Tiles
 tiles:
-  S_WALL:
-    sheet: ss_wall
-    column: 'c'
-    row: 3
-    width: 16
-    height: 16
-    scale: [32, 32]
-  S_WALL_EXPLORED:
-    sheet: ss_wall
-    column: 'c'
-    row: 9
-    width: 16
-    height: 16
-    scale: [32, 32]
   S_FLOOR:
     sheet: ss_tile
-    column: 'e'
+    column: 5
     row: 2
     width: 16
     height: 16
     scale: [32, 32]
   S_FLOOR_EXPLORED:
     sheet: ss_tile
-    column: 'c'
+    column: 3
     row: 2
     width: 16
     height: 16
     scale: [32, 32]
 
+# Walls
+walls:
+  sheet: ss_wall
+  width: 16
+  height: 16
+  scale: [32, 32]
+  sprites:
+    default:
+      0: [3, 3]
+      1: [1, 4]
+      2: [1, 4] # flip 90
+      3: [0, 5]
+      4: [0, 4] # flip 180
+      5: [0, 4]
+      6: [0, 3]
+      7: [3, 4]
+      8: [1, 3] # flip 270
+      9: [2, 5]
+      10: [1, 3]
+      11: [4, 5]
+      12: [2, 3]
+      13: [5, 4]
+      14: [4, 3]
+      15: [4, 4]
+      16: [3, 3]
+    explored:
+      0: [3, 6]
+      1: [1, 7]
+      2: [1, 7] # flip 90
+      3: [0, 8]
+      4: [0, 7] # flip 180
+      5: [0, 7]
+      6: [0, 6]
+      7: [3, 7]
+      8: [1, 6] # flip 270
+      9: [2, 8]
+      10: [1, 6]
+      11: [4, 8]
+      12: [2, 6]
+      13: [5, 7]
+      14: [4, 6]
+      15: [4, 7]
+      16: [6, 6]
+
 # Character Sprites
 characters:
   A_PLAYER:
     sheet: ss_player
-    column: 'm'
+    column: 13
     row: 5
     width: 16
     height: 16
@@ -54,7 +84,7 @@ characters:
     scale: [32, 32]
   A_SNAKE_01:
     sheet: ss_enemy
-    column: 'e'
+    column: 5
     row: 5
     width: 16
     height: 16
@@ -62,7 +92,7 @@ characters:
     scale: [32, 32]
   A_SNAKE_02:
     sheet: ss_enemy
-    column: 'k'
+    column: 11
     row: 5
     width: 16
     height: 16
@@ -70,7 +100,7 @@ characters:
     scale: [32, 32]
   A_MOUSE_01:
     sheet: ss_enemy
-    column: 'g'
+    column: 7
     row: 11
     width : 16
     height: 16
@@ -81,7 +111,7 @@ characters:
 items:
   S_SWORD:
     sheet: ss_weapon
-    column: 'c'
+    column: 3
     row: 0
     width: 16
     height: 16
@@ -89,7 +119,7 @@ items:
     scale: [32, 32]
   S_SHIELD:
     sheet: ss_shield
-    column: 'e'
+    column: 5
     row: 0
     width: 16
     height: 16
@@ -97,7 +127,7 @@ items:
     scale: [32, 32]
   S_SCROLL_01:
     sheet: ss_items
-    column: 'd'
+    column: 4
     row: 0
     width: 16
     height: 16
@@ -105,7 +135,7 @@ items:
     scale: [32, 32]
   S_SCROLL_02:
     sheet: ss_items
-    column: 'b'
+    column: 2
     row: 1
     width: 16
     height: 16
@@ -113,7 +143,7 @@ items:
     scale: [32, 32]
   S_SCROLL_03:
     sheet: ss_items
-    column: 'c'
+    column: 3
     row: 5
     width: 16
     height: 16
@@ -121,7 +151,7 @@ items:
     scale: [32, 32]
   S_FLESH_01:
     sheet: ss_flesh
-    column: 'a'
+    column: 1
     row: 3
     width: 16
     height: 16
@@ -129,7 +159,7 @@ items:
     scale: [32, 32]
   S_FLESH_02:
     sheet: ss_flesh
-    column: 'c'
+    column: 3
     row: 0
     width: 16
     height: 16
@@ -140,7 +170,7 @@ items:
 special:
   S_STAIRS_UP:
     sheet: ss_tile
-    column: 'd'
+    column: 4
     row: 3
     width: 16
     height: 16
@@ -148,7 +178,7 @@ special:
     scale: [32, 32]
   S_STAIRS_DOWN:
     sheet: ss_tile
-    column: 'f'
+    column: 6
     row: 3
     width: 16
     height: 16
@@ -156,7 +186,7 @@ special:
     scale: [32, 32]
   S_MAGIC_LAMP:
     sheet: ss_light
-    column: 'e'
+    column: 5
     row: 0
     width: 16
     height: 16
@@ -164,7 +194,7 @@ special:
     scale: [32, 32]
   S_PORTAL_OPEN:
     sheet: ss_door
-    column: 'e'
+    column: 5
     row: 5
     width: 16
     height: 16
@@ -172,7 +202,7 @@ special:
     scale: [32, 32]
   S_PORTAL_CLOSED:
     sheet: ss_door
-    column: 'd'
+    column: 4
     row: 5
     width: 16
     height: 16

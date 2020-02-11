@@ -23,12 +23,6 @@ class SpriteSheet:
         """
         # load sprite sheet
         self.sprite_sheet = pygame.image.load(file_name).convert()
-        self.tile_dictionary = {
-            'a': 1, 'b': 2, 'c': 3, 'd': 4,
-            'e': 5, 'f': 6, 'g': 7, 'h': 8,
-            'i': 9, 'j': 10, 'k': 11, 'l': 12,
-            'm': 13, 'n': 14, 'o': 15, 'p': 16
-        }
 
     def get_image(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, scale=None):
         """
@@ -42,7 +36,7 @@ class SpriteSheet:
         """
 
         image = pygame.Surface([width, height]).convert()
-        image.blit(self.sprite_sheet, (0, 0), (self.tile_dictionary[column] * width, row * height, width, height))
+        image.blit(self.sprite_sheet, (0, 0), (column * width, row * height, width, height))
         image.set_colorkey(constants.COLOR_BLACK)
 
         if scale:
@@ -71,7 +65,7 @@ class SpriteSheet:
             image = pygame.Surface([width, height]).convert()
 
             # copy image from sheet onto blank
-            sprite_location_on_sheet = (self.tile_dictionary[column] * width + width * i, row * height, width, height)
+            sprite_location_on_sheet = (column * width + width * i, row * height, width, height)
             image.blit(self.sprite_sheet, (0, 0), sprite_location_on_sheet)
 
             # set transparency key to black
@@ -100,23 +94,12 @@ class Assets:
         self.sound_hit_list = []
 
         self.load_assets()
+        self.sprite_dictionary = {}
+        self.generate_sprite_dictionary()
+
         self.sound_adjust()
 
     def load_assets(self):
-
-        def get_attributes(attribute_dictionary, actor=True):
-
-            sprite_attributes = {
-                'column': attribute_dictionary.get('column'),
-                'row': attribute_dictionary.get('row'),
-                'width': attribute_dictionary.get('width'),
-                'height': attribute_dictionary.get('height'),
-                'scale': attribute_dictionary.get('scale'),
-            }
-            if actor:
-                sprite_attributes['num_sprites'] = attribute_dictionary.get('num_sprites')
-
-            return sprite_attributes
 
         for category, assets in self.game_assets.items():
             for asset, attributes in assets.items():
@@ -124,11 +107,14 @@ class Assets:
                     self.__setattr__(asset, SpriteSheet(attributes))
                 elif category == 'tiles':
                     sheet = self.__getattribute__(attributes.get('sheet'))
-                    tile_attributes = get_attributes(attributes, actor=False)
+                    tile_attributes = self.get_assets_attributes(attributes, sprite_category=category)
                     self.__setattr__(asset, sheet.get_image(**tile_attributes))
+                elif category == 'walls':
+                    walls_dict = self.get_assets_attributes(assets, sprite_category=category)
+                    self.__setattr__(category, walls_dict)
                 elif category in ('characters', 'items', 'special'):
                     sheet = self.__getattribute__(attributes.get('sheet'))
-                    asset_attributes = get_attributes(attributes)
+                    asset_attributes = self.get_assets_attributes(attributes, sprite_category=category)
                     self.__setattr__(asset, sheet.get_animation(**asset_attributes))
                 elif category == 'bg_image':
                     image = pygame.image.load(attributes['image'])
@@ -144,14 +130,55 @@ class Assets:
                     if sound_type == 'hit':
                         self.sound_hit_list.append(self.__getattribute__(asset))
 
+    def get_assets_attributes(self, attribute_dictionary, sprite_category):
+
+        if sprite_category != 'walls':
+            sprite_attributes = attribute_dictionary
+            del sprite_attributes['sheet']
+            return sprite_attributes
+
+        else:
+            # Create Wall Dictionary using bitwise localization for each wall face
+
+            walls_dictionary = {'default': {}, 'explored': {}}
+
+            sprite_sheet = self.__getattribute__(attribute_dictionary.get('sheet'))
+            sprites = attribute_dictionary.get('sprites')
+
+            wall_width = attribute_dictionary.get('width')
+            wall_height = attribute_dictionary.get('height')
+            wall_scale = attribute_dictionary.get('scale')
+
+            for wall_type, face in sprites.items():
+                for face_index, (column, row) in face.items():
+                    wall_attributes = {
+                        'column': column,
+                        'row': row,
+                        'width': wall_width,
+                        'height': wall_height,
+                        'scale': wall_scale,
+                    }
+                    walls_dictionary[wall_type][face_index] = sprite_sheet.get_image(**wall_attributes)
+
+            return walls_dictionary
+
+    def generate_sprite_dictionary(self):
+
+        sprite_dict = {}
+        for category, assets in self.game_assets.items():
+            if category != 'walls':
+                for asset, attributes in assets.items():
+                    sprite_dict[asset] = self.__getattribute__(asset)
+            else:
+                sprite_dict['walls'] = {'default': 0, 'explored': 0}
+                sprite_dict['walls']['default'] = self.__getattribute__('walls')['default']
+                sprite_dict['walls']['explored'] = self.__getattribute__('walls')['explored']
+
+        self.sprite_dictionary = sprite_dict
+
+
     def sprite(self, key):
-
-        sprite_dictionary = {}
-        for category in self.game_assets.values():
-            for asset in category.keys():
-                sprite_dictionary[asset] = self.__getattribute__(asset)
-
-        return sprite_dictionary[key]
+        return self.sprite_dictionary[key]
 
     def sound_add(self, file):
         new_sound = pygame.mixer.Sound(file)

@@ -158,14 +158,7 @@ def map_surface(map_to_draw):
     render_height_max = int(camera_y + display_map_height / 2)
     render_height_max = min(render_height_max, constants.MAP_HEIGHT)
 
-    wall = {
-        'default': globals.ASSETS.__getattribute__('S_WALL'),
-        'explored': globals.ASSETS.__getattribute__('S_WALL_EXPLORED')
-    }
-    floor = {
-        'default': globals.ASSETS.__getattribute__('S_FLOOR'),
-        'explored': globals.ASSETS.__getattribute__('S_FLOOR_EXPLORED')
-    }
+    walls = globals.ASSETS.sprite('walls')
 
     for x in range(render_width_min, render_width_max):
         for y in range(render_height_min, render_height_max):
@@ -177,15 +170,17 @@ def map_surface(map_to_draw):
             if is_visible:
                 map_to_draw[x][y].explored = True
                 if map_to_draw[x][y].block_path:
-                    globals.SURFACE_MAP.blit(wall.get('default'), (x_cell, y_cell))
+                    facing = map_to_draw[x][y].assignment
+                    globals.SURFACE_MAP.blit(walls['default'][facing], (x_cell, y_cell))
                 else:
-                    globals.SURFACE_MAP.blit(floor.get('default'), (x_cell, y_cell))
+                    globals.SURFACE_MAP.blit(globals.ASSETS.sprite('S_FLOOR'), (x_cell, y_cell))
 
             elif map_to_draw[x][y].explored:
                 if map_to_draw[x][y].block_path:
-                    globals.SURFACE_MAP.blit(wall.get('explored'), (x_cell, y_cell))
+                    facing = map_to_draw[x][y].assignment
+                    globals.SURFACE_MAP.blit(walls['explored'][facing], (x_cell, y_cell))
                 else:
-                    globals.SURFACE_MAP.blit(floor.get('explored'), (x_cell, y_cell))
+                    globals.SURFACE_MAP.blit(globals.ASSETS.sprite('S_FLOOR_EXPLORED'), (x_cell, y_cell))
 
 
 def debug():
