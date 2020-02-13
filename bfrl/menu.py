@@ -309,6 +309,7 @@ def inventory():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1 and mouse_in_window and mouse_line_selection <= len(item_list):
                     globals.PLAYER.container.inventory[mouse_line_selection].item.use()
+                    globals.CLOCK.tick(constants.GAME_FPS)
                     # TODO keep inventory open if item is an equipment
                     menu_close = True
 
@@ -326,6 +327,7 @@ def inventory():
 
         # Display Menu
         globals.SURFACE_MAIN.blit(inventory_surface, menu_location)
+        globals.CLOCK.tick(constants.GAME_FPS)
         pygame.display.flip()
 
 
@@ -410,5 +412,5 @@ def tile_select(origin=None, max_range=None, ignore_walls=True, ignore_creatures
         draw.debug()
         draw.messages()
 
-        pygame.display.flip()
         globals.CLOCK.tick(constants.GAME_FPS)
+        pygame.display.flip()

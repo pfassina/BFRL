@@ -8,7 +8,6 @@ import sys
 # game files
 from bfrl import constants
 from bfrl import globals
-from bfrl import game
 from bfrl import maps
 from bfrl import draw
 from bfrl import menu
@@ -100,11 +99,11 @@ def main_loop():
     while not game_quit:
 
         # Handle Player Input
-        player_action = game.handle_keys()
+        player_action = handle_keys()
         maps.calculate_fov()
 
         if player_action == 'QUIT':
-            game.exit_game()
+            exit_game()
 
         if player_action != 'no-action':
             for obj in globals.GAME.current_objects:
@@ -206,16 +205,16 @@ def start(continue_game=True):
     # starts the game
     if continue_game:
         try:
-            game.load()
+            load()
             globals.FOV_CALCULATE = True
         except FileNotFoundError:
-            game.new()
+            new()
             globals.FOV_CALCULATE = True
             print('Game not found')
     else:
-        game.new()
+        new()
         globals.FOV_CALCULATE = True
-    game.main_loop()
+    main_loop()
 
 
 def new():
@@ -265,6 +264,6 @@ def preferences_load():
 
 def exit_game():
 
-    game.save()
+    save()
     pygame.quit()
     sys.exit()

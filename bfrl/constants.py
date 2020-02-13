@@ -16,7 +16,7 @@ GAME_FPS = 60
 # Map Vars
 MAP_WIDTH = 50
 MAP_HEIGHT = 30
-MAP_MAX_NUM_ROOMS = 4
+MAP_MAX_NUM_ROOMS = 10
 MAP_LEVELS = 1
 
 # Room Limitations

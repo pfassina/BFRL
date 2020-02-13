@@ -108,32 +108,14 @@ class Assets:
 
         # load walls
         wall_assets = self.game_assets.get('walls')
-        walls_tiles = self.get_wall_tiles(wall_assets)
+        walls_tiles = self.load_wall_tiles(wall_assets)
         self.__setattr__('walls', walls_tiles)
 
-        # load tiles
-        tiles = self.game_assets.get('tiles')
-        for tile, attributes in tiles.items():
-            sheet = self.__getattribute__(attributes.pop('sheet'))
-            self.__setattr__(tile, sheet.get_image(**attributes))
-
-        # load characters
-        characters = self.game_assets.get('characters')
-        for character, attributes in characters.items():
-            sheet = self.__getattribute__(attributes.pop('sheet'))
-            self.__setattr__(character, sheet.get_animation(**attributes))
-
-        # load items
-        items = self.game_assets.get('items')
-        for item, attributes in items.items():
-            sheet = self.__getattribute__(attributes.pop('sheet'))
-            self.__setattr__(item, sheet.get_animation(**attributes))
-
-        # load special
-        specials = self.game_assets.get('specials')
-        for special, attributes in specials.items():
-            sheet = self.__getattribute__(attributes.pop('sheet'))
-            self.__setattr__(special, sheet.get_animation(**attributes))
+        # load sprites
+        self.load_sprites('tiles', animation=False)
+        self.load_sprites('characters')
+        self.load_sprites('items')
+        self.load_sprites('specials')
 
         # load background images
         bg_images = self.game_assets.get('bg_images')
@@ -157,7 +139,7 @@ class Assets:
             if sound_type == 'hit':
                 self.sound_hit_list.append(self.__getattribute__(sound))
 
-    def get_wall_tiles(self, wall_assets):
+    def load_wall_tiles(self, wall_assets):
 
         # Create Wall Dictionary using bitwise localization for each wall face
         wall_tiles = {}
@@ -181,6 +163,15 @@ class Assets:
 
         return wall_tiles
 
+    def load_sprites(self, name, animation=True):
+        asset_type = self.game_assets.get(name)
+        for asset, attributes in asset_type.items():
+            sprite_sheet = self.__getattribute__(attributes.pop('sheet'))
+            if animation:
+                self.__setattr__(asset, sprite_sheet.get_animation(**attributes))
+            else:
+                self.__setattr__(asset, sprite_sheet.get_image(**attributes))
+
     def generate_sprite_dictionary(self):
 
         sprite_dict = {}
@@ -194,7 +185,6 @@ class Assets:
                 sprite_dict['walls']['explored'] = self.__getattribute__('walls')['explored']
 
         self.sprite_dictionary = sprite_dict
-
 
     def sprite(self, key):
         return self.sprite_dictionary[key]
