@@ -19,7 +19,7 @@ def init():
     pygame.key.set_repeat(200, 70)
     globals.init()
 
-    tcod.namegen_parse('data/namegen/celtic.cfg')
+    tcod.namegen_parse('data/name_generator/celtic.cfg')
 
     # PREFERENCES tracks user preferences
     try:

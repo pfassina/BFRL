@@ -1,7 +1,7 @@
 
 class Tile:
     """
-    This class functions as a struct that tracks the data for each
+    This class functions as a structure that tracks the data for each
     tile within a map.
 
     ** PROPERTIES **

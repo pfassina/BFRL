@@ -3,7 +3,6 @@ import pygame
 import yaml
 
 # game files
-# from bfrl import startup
 from bfrl import constants
 from bfrl import globals
 
@@ -14,19 +13,19 @@ class SpriteSheet:
     sprite_sheet.
 
     ** PROPERTIES **
-    ObjectSpriteSheet.sprite_sheet : The loaded spritesheet accessed through the file_name argument.
+    ObjectSpriteSheet.sprite_sheet : The loaded sprite sheet accessed through the file_name argument.
     """
 
     def __init__(self, file_name):
         """
-        :param file_name: String which contains the directory/filename of the image for use as a spritesheet.
+        :param file_name: String which contains the directory/filename of the image for use as a sprites sheet.
         """
         # load sprite sheet
         self.sprite_sheet = pygame.image.load(file_name).convert()
 
     def get_image(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, scale=None):
         """
-        returns a list containing a single image from a spritesheet given a grid location.
+        returns a list containing a single image from a sprite sheet given a grid location.
         :param column: Letter which gets converted into an integer
         :param row: integer
         :param width: integer, individual image width in pixels

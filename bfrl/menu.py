@@ -125,7 +125,7 @@ def options():
 
     settings_menu_width = 200
     settings_menu_height = 200
-    settings_menu_bgcolor = constants.COLOR_DEFAULT_BG
+    settings_menu_bg_color = constants.COLOR_DEFAULT_BG
 
     settings_menu_surface = pygame.Surface((settings_menu_width, settings_menu_height))
     settings_menu_rect = pygame.Rect(0, 0, settings_menu_width, settings_menu_width)
@@ -206,7 +206,7 @@ def options():
             game.preferences_save()
             menu_close = True
 
-        settings_menu_surface.fill(settings_menu_bgcolor)
+        settings_menu_surface.fill(settings_menu_bg_color)
         globals.SURFACE_MAIN.blit(settings_menu_surface, settings_menu_rect.topleft)
 
         draw.text(**slider_sound_text)
