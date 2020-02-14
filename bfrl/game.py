@@ -27,40 +27,44 @@ class ObjectGame:
 
     def __init__(self):
 
-        self.current_objects = []
+        self.current_map = None
         self.message_history = []
         self.maps_previous = []
         self.maps_next = []
-        self.current_map, self.current_rooms = maps.create()
 
     def transition_next(self):
 
         # destroy surfaces to allow game save
-        for obj in self.current_objects:
+        for obj in self.objects_on_map:
             obj.animation = None
 
         # save current map to previous maps
-        self.maps_previous.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map,
-                                   self.current_rooms, self.current_objects))
+        self.maps_previous.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map))
 
         if len(self.maps_next) == 0:
 
             # clear current_objects list
-            self.current_objects = [globals.PLAYER]
+            for obj in self.objects_on_map:
+                if obj != globals.PLAYER:
+                    self.remove_object(obj)
 
             # add Sprite back to Player
             globals.PLAYER.animation = globals.ASSETS.sprite(globals.PLAYER.animation_key)
 
             # create new map and place objects
-            self.current_map, self.current_rooms = maps.create()
-            maps.place_objects(self.current_rooms)
+            self.current_map = maps.GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
+            self.current_map.generate_dungeon(
+                constants.MAP_MAX_NUM_ROOMS,
+                constants.ROOM_MIN_WIDTH, constants.ROOM_MAX_WIDTH,
+                constants.ROOM_MIN_HEIGHT, constants.ROOM_MAX_HEIGHT
+            )
 
         else:
             # load next map
-            globals.PLAYER.x, globals.PLAYER.y, self.current_map, self.current_rooms, self.current_objects = self.maps_next.pop(-1)
+            globals.PLAYER.x, globals.PLAYER.y, self.current_map = self.maps_next.pop(-1)
 
             # load destroyed surfaces
-            for obj in self.current_objects:
+            for obj in self.objects_on_map:
                 obj.animation = globals.ASSETS.sprite(obj.animation_key)
 
             # calculate FOV
@@ -72,23 +76,32 @@ class ObjectGame:
         if len(self.maps_previous) > 0:
 
             # destroy surfaces to allow game save
-            for obj in self.current_objects:
+            for obj in self.objects_on_map:
                 obj.animation = None
 
             # save current map to next maps
-            self.maps_next.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map,
-                                   self.current_rooms, self.current_objects))
+            self.maps_next.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map))
 
             # load last map
-            globals.PLAYER.x, globals.PLAYER.y, self.current_map, self.current_rooms, self.current_objects = self.maps_previous.pop(-1)
+            globals.PLAYER.x, globals.PLAYER.y, self.current_map = self.maps_previous.pop(-1)
 
             # load destroyed surfaces on previous map
-            for obj in self.current_objects:
+            for obj in self.objects_on_map:
                 obj.animation = globals.ASSETS.sprite(obj.animation_key)
 
             # calculate fov
             maps.make_fov(self.current_map)
             globals.FOV_CALCULATE = True
+
+    @property
+    def objects_on_map(self):
+        return self.current_map.list_of_objects
+
+    def add_object(self, object_to_add):
+        self.current_map.list_of_objects.append(object_to_add)
+
+    def remove_object(self, object_to_remove):
+        self.current_map.list_of_objects.remove(object_to_remove)
 
 
 def main_loop():
@@ -106,7 +119,7 @@ def main_loop():
             exit_game()
 
         if player_action != 'no-action':
-            for obj in globals.GAME.current_objects:
+            for obj in globals.GAME.objects_on_map:
                 if obj.ai:
                     obj.ai.take_turn()
                 if obj.exit_portal:
@@ -222,16 +235,23 @@ def new():
     # Creates new GAME
     globals.GAME = ObjectGame()
 
+    # initialize maps
+    globals.GAME.current_map = maps.GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
+
     # Creates a player
     generator.player((0, 0))
 
-    # Place objects on map
-    maps.place_objects(globals.GAME.current_rooms)
+    # Generate the map
+    globals.GAME.current_map.generate_dungeon(
+                constants.MAP_MAX_NUM_ROOMS,
+                constants.ROOM_MIN_WIDTH, constants.ROOM_MAX_WIDTH,
+                constants.ROOM_MIN_HEIGHT, constants.ROOM_MAX_HEIGHT
+            )
 
 
 def save():
 
-    for obj in globals.GAME.current_objects:
+    for obj in globals.GAME.objects_on_map:
         obj.animation = None
 
     with gzip.open('data/savegame', 'wb') as file:
@@ -243,7 +263,7 @@ def load():
     with gzip.open('data/savegame', 'rb') as file:
         globals.GAME, globals.PLAYER = pickle.load(file)
 
-    for obj in globals.GAME.current_objects:
+    for obj in globals.GAME.objects_on_map:
         obj.animation = globals.ASSETS.sprite(obj.animation_key)
 
     # make FOV

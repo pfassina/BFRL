@@ -22,7 +22,7 @@ def player(coordinates):
     globals.PLAYER = actors.ObjActor(x, y, 'Python', 'A_PLAYER',
                                      animation_speed=1, creature=creature_component,
                                      container=bag, depth=constants.DEPTH_PLAYER)
-    globals.GAME.current_objects.append(globals.PLAYER)
+    globals.GAME.current_map.list_of_objects.append(globals.PLAYER)
 
     return globals.PLAYER
 
@@ -34,7 +34,7 @@ def portal(coordinates):
     obj_exit_portal = actors.ObjActor(x, y, 'Exit Portal', animation_key='S_PORTAL_CLOSED',
                                       exit_portal=exit_portal_component, depth=constants.DEPTH_STAIRS)
 
-    globals.GAME.current_objects.append(obj_exit_portal)
+    globals.GAME.current_map.list_of_objects.append(obj_exit_portal)
 
 
 def lamp(coordinates):
@@ -43,7 +43,7 @@ def lamp(coordinates):
     item_component = actors.ComponentItem()
     obj_lamp = actors.ObjActor(x, y, 'The Lamp', animation_key='S_MAGIC_LAMP', item=item_component)
 
-    globals.GAME.current_objects.append(obj_lamp)
+    globals.GAME.current_map.list_of_objects.append(obj_lamp)
 
 
 def stairs(coordinates, downwards=True):
@@ -58,7 +58,7 @@ def stairs(coordinates, downwards=True):
         obj_stairs = actors.ObjActor(x, y, 'stairs up', animation_key='S_STAIRS_UP',
                                      stairs=stairs_component, depth=constants.DEPTH_STAIRS)
 
-    globals.GAME.current_objects.append(obj_stairs)
+    globals.GAME.current_map.list_of_objects.append(obj_stairs)
 
 
 # Items
@@ -76,7 +76,7 @@ def item(coordinates):
     random_num = random.randint(1, len(generator_dict))
 
     selected_item = generator_dict[random_num]
-    globals.GAME.current_objects.append(selected_item)
+    globals.GAME.current_map.list_of_objects.append(selected_item)
 
 
 def scroll_lightning(coordinates):
@@ -156,7 +156,7 @@ def enemy(coordinates):
     random_num = np.random.choice(len(generator_dict), p=[0.5, 0.15, 0.35])
 
     selected_enemy = generator_dict[random_num]
-    globals.GAME.current_objects.append(selected_enemy)
+    globals.GAME.current_map.list_of_objects.append(selected_enemy)
 
 
 def snake_anaconda(coordinates):

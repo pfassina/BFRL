@@ -2,8 +2,9 @@
 from bfrl import ai
 from bfrl import constants
 from bfrl import game
-from bfrl import maps
+from bfrl import globals
 from bfrl import menu
+from bfrl import maps
 
 
 def cast_heal(caster, value):
@@ -38,7 +39,7 @@ def cast_lightning(caster, value):
 
         # cycle through list, damage all creatures for value
         for x, y in list_of_tiles[1:]:
-            target = maps.check_for_creature(x, y)
+            target = globals.GAME.current_map.check_for_creature(x, y)
             if target:
                 game.message(f'{target.display_name} is hit by a lightning bolt and takes {spell_range} damage!')
                 target.creature.take_damage(spell_range)
@@ -61,7 +62,7 @@ def cast_fireball(caster, value):
 
         # damage all creatures in tiles
         for x, y in list_of_tiles:
-            target = maps.check_for_creature(x, y)
+            target = globals.GAME.current_map.check_for_creature(x, y)
             if target:
                 game.message(f'{target.display_name} is hit by a fireball and takes {spell_damage} damage!')
                 target.creature.take_damage(spell_damage)
@@ -75,7 +76,7 @@ def cast_confusion(_, effect_length):
     target_tile = menu.tile_select()
     if target_tile:
         tx, ty = target_tile
-        target = maps.check_for_creature(tx, ty)
+        target = globals.GAME.current_map.check_for_creature(tx, ty)
 
         # temporarily confuse the target
         if target:

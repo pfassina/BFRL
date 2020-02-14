@@ -7,7 +7,6 @@ import pygame
 from bfrl import constants
 from bfrl import game
 from bfrl import globals
-from bfrl import maps
 from bfrl import draw
 
 
@@ -185,9 +184,9 @@ class ComponentCreature:
         :param dy: difference of y from current location
         """
 
-        tile_is_wall = (globals.GAME.current_map[self.owner.x + dx][self.owner.y + dy].block_path is True)
+        tile_is_wall = (globals.GAME.current_map.map_tiles[self.owner.x + dx][self.owner.y + dy].block_path is True)
 
-        target = maps.check_for_creature(self.owner.x + dx, self.owner.y + dy, self.owner)
+        target = globals.GAME.current_map.check_for_creature(self.owner.x + dx, self.owner.y + dy, self.owner)
         if target:
             self.attack(target)
 
@@ -312,7 +311,7 @@ class ComponentItem:
                 self.owner.animation = None
 
                 # remove item from globals.GAME
-                globals.GAME.current_objects.remove(self.owner)
+                globals.GAME.objects_on_map.remove(self.owner)
 
                 # assigns container ownership to actor's container
                 self.container = actor.container
@@ -320,7 +319,7 @@ class ComponentItem:
     def drop(self, new_x, new_y):
 
         # add item to game objects
-        globals.GAME.current_objects.append(self.owner)
+        globals.GAME.objects_on_map.append(self.owner)
 
         # load item animation
         self.owner.animation = globals.ASSETS.sprite(self.owner.animation_key)

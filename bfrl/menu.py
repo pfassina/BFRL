@@ -5,9 +5,9 @@ import sys
 # game files
 from bfrl import constants
 from bfrl import draw
+from bfrl import maps
 from bfrl import game
 from bfrl import globals
-from bfrl import maps
 
 
 def main():
@@ -359,10 +359,10 @@ def tile_select(origin=None, max_range=None, ignore_walls=True, ignore_creatures
         for i, (x, y) in enumerate(list_of_tiles):
             if i == 0:
                 continue
-            if not ignore_walls and maps.check_for_wall(globals.GAME.current_map, x, y):
+            if not ignore_walls and globals.GAME.current_map.check_for_wall(x, y):
                 list_of_tiles = list_of_tiles[:i + 1]
                 break
-            if not ignore_creatures and maps.check_for_creature(x, y):
+            if not ignore_creatures and globals.GAME.current_map.check_for_creature(x, y):
                 list_of_tiles = list_of_tiles[:i + 1]
                 break
 
@@ -385,8 +385,8 @@ def tile_select(origin=None, max_range=None, ignore_walls=True, ignore_creatures
         globals.CAMERA.update()
 
         # draw the map first
-        draw.map_surface(globals.GAME.current_map)
-        for obj in globals.GAME.current_objects:
+        draw.map_surface(globals.GAME.current_map.map_tiles)
+        for obj in globals.GAME.objects_on_map:
             obj.draw()
 
         # draw rectangle at mouse position on top of game

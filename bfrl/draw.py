@@ -127,10 +127,10 @@ def game():
     globals.CAMERA.update()
 
     # draw the map
-    map_surface(globals.GAME.current_map)
+    map_surface(globals.GAME.current_map.map_tiles)
 
     # draw the characters
-    for obj in sorted(globals.GAME.current_objects, key=(lambda x: x.depth), reverse=True):
+    for obj in sorted(globals.GAME.objects_on_map, key=(lambda x: x.depth), reverse=True):
         obj.draw()
 
     globals.SURFACE_MAIN.blit(globals.SURFACE_MAP, (0, 0), globals.CAMERA.rectangle)
