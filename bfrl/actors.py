@@ -122,6 +122,15 @@ class ObjActor:
                 draw_location = (x_cell, y_cell)
                 globals.SURFACE_MAP.blit(self.animation[self.sprite_image], draw_location)
 
+    def animation_destroy(self):
+        self.animation = None
+
+    def animation_initialize(self):
+        self.animation = globals.ASSETS.sprite(self.animation_key)
+
+    def set_position(self, coordinates):
+        self.x, self.y = coordinates
+
     def distance_to(self, other):
 
         dx = other.x - self.x

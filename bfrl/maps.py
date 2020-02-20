@@ -142,7 +142,7 @@ class GameMap:
         rooms = len(self.list_of_rooms) - 1
         for room_number, room in enumerate(self.list_of_rooms):
             if room_number == 0:
-                globals.PLAYER.x, globals.PLAYER.y = room.center
+                globals.PLAYER.set_position(room.center)
                 if first_level:
                     generator.portal(room.center)
                 else:

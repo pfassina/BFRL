@@ -36,23 +36,23 @@ class ObjectGame:
 
         # destroy surfaces to allow game save
         for obj in self.objects_on_map:
-            obj.animation = None
+            obj.animation_destroy()
 
         # save current map to previous maps
-        self.maps_previous.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map))
+        self.maps_previous.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map, self.objects_on_map))
 
         if len(self.maps_next) == 0:
 
-            # clear current_objects list
-            for obj in self.objects_on_map:
-                if obj != globals.PLAYER:
-                    self.remove_object(obj)
-
-            # add Sprite back to Player
-            globals.PLAYER.animation = globals.ASSETS.sprite(globals.PLAYER.animation_key)
-
-            # create new map and place objects
+            # create new map object and place objects
             self.current_map = maps.GameMap(constants.MAP_WIDTH, constants.MAP_HEIGHT)
+
+            # clear current_objects list
+            self.current_map.list_of_objects = [globals.PLAYER]
+
+            # initialize player animation
+            globals.PLAYER.animation_initialize()
+
+            # Generate dungeon
             self.current_map.generate_dungeon(
                 constants.MAP_MAX_NUM_ROOMS,
                 constants.ROOM_MIN_WIDTH, constants.ROOM_MAX_WIDTH,
@@ -61,14 +61,16 @@ class ObjectGame:
 
         else:
             # load next map
-            globals.PLAYER.x, globals.PLAYER.y, self.current_map = self.maps_next.pop(-1)
+            globals.PLAYER.x, globals.PLAYER.y, self.current_map, objects_on_map = self.maps_next.pop(-1)
+            self.current_map.list_of_objects = objects_on_map
 
             # load destroyed surfaces
             for obj in self.objects_on_map:
-                obj.animation = globals.ASSETS.sprite(obj.animation_key)
+                obj.animation_initialize()
 
             # calculate FOV
-            maps.make_fov(self.current_map)
+            maps.make_fov(self.current_map.map_tiles)
+
         globals.FOV_CALCULATE = True
 
     def transition_previous(self):
@@ -80,17 +82,18 @@ class ObjectGame:
                 obj.animation = None
 
             # save current map to next maps
-            self.maps_next.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map))
+            self.maps_next.append((globals.PLAYER.x, globals.PLAYER.y, self.current_map, self.objects_on_map))
 
             # load last map
-            globals.PLAYER.x, globals.PLAYER.y, self.current_map = self.maps_previous.pop(-1)
+            globals.PLAYER.x, globals.PLAYER.y, self.current_map, objects = self.maps_previous.pop(-1)
+            self.current_map.list_of_objects = objects
 
             # load destroyed surfaces on previous map
             for obj in self.objects_on_map:
                 obj.animation = globals.ASSETS.sprite(obj.animation_key)
 
             # calculate fov
-            maps.make_fov(self.current_map)
+            maps.make_fov(self.current_map.map_tiles)
             globals.FOV_CALCULATE = True
 
     @property
@@ -252,7 +255,7 @@ def new():
 def save():
 
     for obj in globals.GAME.objects_on_map:
-        obj.animation = None
+        obj.animation_destroy()
 
     with gzip.open('data/savegame', 'wb') as file:
         pickle.dump([globals.GAME, globals.PLAYER], file)
