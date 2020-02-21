@@ -111,22 +111,29 @@ def main_loop():
     """
     Runs the game main loop
     """
+
+    # get game state from global game object
+    # substitute game_quit = False
+
     game_quit = False
     while not game_quit:
 
         # Handle Player Input
         player_action = handle_keys()
+
+        # example of how to handle input based on game state
+        # for event in pygame.event.get():
+        #     input.update(event, game.State.get_current())
+        #     ui.process_ui_events(event)
+        #     ui.handle_ui_events(event)
+
         maps.calculate_fov()
 
         if player_action == 'QUIT':
             exit_game()
 
-        if player_action != 'no-action':
-            for obj in globals.GAME.objects_on_map:
-                if obj.ai:
-                    obj.ai.take_turn()
-                if obj.exit_portal:
-                    obj.exit_portal.update()
+        # Process Turn Queue
+        turn(player_action)
 
         if globals.PLAYER.state in ['STATUS DEAD', 'STATUS WIN']:
             try:
@@ -144,8 +151,26 @@ def main_loop():
         globals.CLOCK.tick(constants.GAME_FPS)
 
 
-def message(message_to_display, color=constants.COLOR_GREY):
-    globals.GAME.message_history.append((message_to_display, color))
+def turn(player_action):
+
+    # get list of active actors on map
+    # order turn queue based on actor initiative
+    # select turn_holder
+
+    # define game state based on type turn holder
+
+    # if game_state == "player_turn":
+    #     input = get_input()
+    #     handle_input(turn_holder, input)  # have whatever input apply only to the turn holder
+    # elif game_state == "enemy_turn":
+    #     take_turn(turn_holder)  # have the ai run on the ai who is turn holder only
+
+    if player_action != 'no-action':
+        for obj in globals.GAME.objects_on_map:
+            if obj.ai:
+                obj.ai.take_turn()
+            if obj.exit_portal:
+                obj.exit_portal.update()
 
 
 def handle_keys():
@@ -214,6 +239,10 @@ def handle_keys():
                         obj.exit_portal.use()
 
     return 'no-action'
+
+
+def message(message_to_display, color=constants.COLOR_GREY):
+    globals.GAME.message_history.append((message_to_display, color))
 
 
 def start(continue_game=True):
