@@ -23,9 +23,24 @@ class ObjActor:
     ** METHODS **
     obj_Actor.draw() : this method draws the object to the screen.
     """
-    def __init__(self, x, y, name_object, animation_key, animation_speed=0.5, depth=0, state=None,
-                 creature=None, ai=None, container=None, item=None, equipment=None, stairs=None,
-                 exit_portal=None):
+
+    def __init__(
+        self,
+        x,
+        y,
+        name_object,
+        animation_key,
+        animation_speed=0.5,
+        depth=0,
+        state=None,
+        creature=None,
+        ai=None,
+        container=None,
+        item=None,
+        equipment=None,
+        stairs=None,
+        exit_portal=None,
+    ):
         """
         :param x: starting x position on the current map
         :param y: starting y position on the current map
@@ -94,10 +109,10 @@ class ObjActor:
     def display_name(self):
         """Returns the best name to display for this object"""
         if self.creature:
-            return f'{self.creature.name_instance} the {self.name_object}'
+            return f"{self.creature.name_instance} the {self.name_object}"
         if self.item:
             if self.equipment and self.equipment.equipped:
-                return f'{self.name_object} (EQP)'
+                return f"{self.name_object} (EQP)"
             else:
                 return self.name_object
 
@@ -120,7 +135,9 @@ class ObjActor:
                     else:
                         self.sprite_image += 1
                 draw_location = (x_cell, y_cell)
-                globals.SURFACE_MAP.blit(self.animation[self.sprite_image], draw_location)
+                globals.SURFACE_MAP.blit(
+                    self.animation[self.sprite_image], draw_location
+                )
 
     def animation_destroy(self):
         self.animation = None
@@ -136,14 +153,14 @@ class ObjActor:
         dx = other.x - self.x
         dy = other.y - self.y
 
-        return math.sqrt(dx ** 2 + dy ** 2)
+        return math.sqrt(dx**2 + dy**2)
 
     def move_towards(self, other):
 
         dx = other.x - self.x
         dy = other.y - self.y
 
-        distance = math.sqrt(dx ** 2 + dy ** 2)
+        distance = math.sqrt(dx**2 + dy**2)
 
         dx = int(round(dx / distance, 0))
         dy = int(round(dy / distance, 0))
@@ -155,7 +172,7 @@ class ObjActor:
         dx = self.x - other.x
         dy = self.y - other.y
 
-        distance = math.sqrt(dx ** 2 + dy ** 2)
+        distance = math.sqrt(dx**2 + dy**2)
 
         dx = int(round(dx / distance, 0))
         dy = int(round(dy / distance, 0))
@@ -165,15 +182,18 @@ class ObjActor:
 
 class ComponentCreature:
     """
-    Creatures have health, and can damage other objects by attacking them.  Can also die.
+    Creatures have health, and can damage other objects by attacking themself.
+    Can also die.
 
     ** METHODS **
     ComponentCreature.move : allows the creature to move to a different tile
     ComponentCreature.attack : allows the creature to attack a target.
-    ComponentCreature.take_damage : Creature takes damage. If health falls below 0, executes the death function.
+    ComponentCreature.take_damage : Creature takes damageself. If health falls below 0, executes the death function.
     """
 
-    def __init__(self, name_instance, base_attack=2, base_defense=0, hp=10, death_function=None):
+    def __init__(
+        self, name_instance, base_attack=2, base_defense=0, hp=10, death_function=None
+    ):
         """
         :param name_instance: String, name of specific object. "Bob" for example.
         :param hp: integer, health of the creature. Is converted into both the maximum health and the current health.
@@ -193,9 +213,16 @@ class ComponentCreature:
         :param dy: difference of y from current location
         """
 
-        tile_is_wall = (globals.GAME.current_map.map_tiles[self.owner.x + dx][self.owner.y + dy].block_path is True)
+        tile_is_wall = (
+            globals.GAME.current_map.map_tiles[self.owner.x + dx][
+                self.owner.y + dy
+            ].block_path
+            is True
+        )
 
-        target = globals.GAME.current_map.check_for_creature(self.owner.x + dx, self.owner.y + dy, self.owner)
+        target = globals.GAME.current_map.check_for_creature(
+            self.owner.x + dx, self.owner.y + dy, self.owner
+        )
         if target:
             self.attack(target)
 
@@ -209,12 +236,14 @@ class ComponentCreature:
         :param target: object attacked by the creature
         """
         damage_dealt = max(self.power - target.creature.defense, 0)
-        message = f'{self.name_instance} attacks {target.creature.name_instance} for {damage_dealt} damage!'
+        message = f"{self.name_instance} attacks {target.creature.name_instance} for {damage_dealt} damage!"
         game.message(message, constants.COLOR_RED)
         target.creature.take_damage(damage_dealt)
 
         if damage_dealt > 0 and self.owner is globals.PLAYER:
-            pygame.mixer.Sound.play(globals.RANDOM_ENGINE.choice(globals.ASSETS.sound_hit_list))
+            pygame.mixer.Sound.play(
+                globals.RANDOM_ENGINE.choice(globals.ASSETS.sound_hit_list)
+            )
 
     @property
     def power(self):
@@ -225,7 +254,10 @@ class ComponentCreature:
 
         total_power = self.base_attack
         if self.owner.container:
-            object_bonuses = [obj.equipment.attack_bonus for obj in self.owner.container.equipped_items]
+            object_bonuses = [
+                obj.equipment.attack_bonus
+                for obj in self.owner.container.equipped_items
+            ]
             for bonus in object_bonuses:
                 total_power += bonus
 
@@ -240,7 +272,10 @@ class ComponentCreature:
 
         total_defense = self.base_defense
         if self.owner.container:
-            object_bonuses = [obj.equipment.defense_bonus for obj in self.owner.container.equipped_items]
+            object_bonuses = [
+                obj.equipment.defense_bonus
+                for obj in self.owner.container.equipped_items
+            ]
             for bonus in object_bonuses:
                 total_defense += bonus
 
@@ -292,7 +327,9 @@ class ComponentContainer:
         :return: list of equipped items
         """
 
-        list_of_equipped_items = [obj for obj in self.inventory if obj.equipment and obj.equipment.equipped]
+        list_of_equipped_items = [
+            obj for obj in self.inventory if obj.equipment and obj.equipment.equipped
+        ]
         return list_of_equipped_items
 
     # get the weight of everything within container
@@ -311,9 +348,9 @@ class ComponentItem:
         # check if actor container can hold the item
         if actor.container:
             if actor.container.volume + self.volume > actor.container.max_volume:
-                game.message('Not enough room to pick up', color=constants.COLOR_RED)
+                game.message("Not enough room to pick up", color=constants.COLOR_RED)
             else:
-                game.message('Picking up')
+                game.message("Picking up")
                 # add item to actor inventory
                 actor.container.inventory.append(self.owner)
                 # remove animation for game save
@@ -340,7 +377,7 @@ class ComponentItem:
         self.owner.x = new_x
         self.owner.y = new_y
 
-        game.message('Item dropped!')
+        game.message("Item dropped!")
 
     def use(self):
         # Use the item by production an effect and removing it
@@ -352,13 +389,12 @@ class ComponentItem:
         if self.use_function:
             result = self.use_function(self.container.owner, self.value)
             if result is not None:
-                print('use_function_failed')
+                print("use_function_failed")
             else:
                 self.container.inventory.remove(self.owner)
 
 
 class ComponentEquipment:
-
     def __init__(self, attack_bonus=0, defense_bonus=0, slot=None):
 
         self.attack_bonus = attack_bonus
@@ -380,20 +416,19 @@ class ComponentEquipment:
 
         for item in all_equipped_items:
             if item.equipment.slot == self.slot:
-                game.message('equipment slot is occupied', constants.COLOR_RED)
+                game.message("equipment slot is occupied", constants.COLOR_RED)
                 return
 
         # equips if slot is free
         self.equipped = True
-        game.message('Item equipped')
+        game.message("Item equipped")
 
     def unequip(self):
         self.equipped = False
-        game.message('Item unequipped')
+        game.message("Item unequipped")
 
 
 class ComponentStairs:
-
     def __init__(self, downwards=True):
         self.downwards = downwards
 
@@ -405,23 +440,22 @@ class ComponentStairs:
 
 
 class ComponentExitPortal:
-
     def __init__(self):
-        self.open_sprite = 'S_PORTAL_OPEN'
-        self.closed_sprite = 'S_PORTAL_CLOSED'
+        self.open_sprite = "S_PORTAL_OPEN"
+        self.closed_sprite = "S_PORTAL_CLOSED"
         self.found_lamp = False
 
     def update(self):
 
         for obj in globals.PLAYER.container.inventory:
-            if obj.name_object == 'The Lamp' and self.owner.state != 'OPEN':
+            if obj.name_object == "The Lamp" and self.owner.state != "OPEN":
                 self.found_lamp = True
-                self.owner.state = 'OPEN'
+                self.owner.state = "OPEN"
                 self.owner.animation_key = self.open_sprite
                 self.owner.animation = globals.ASSETS.sprite(self.open_sprite)
 
-        if not self.found_lamp and self.owner.state == 'OPEN':
-            self.owner.state = 'CLOSED'
+        if not self.found_lamp and self.owner.state == "OPEN":
+            self.owner.state = "CLOSED"
             self.owner.animation_key = self.closed_sprite
             self.owner.animation = globals.ASSETS.sprite(self.closed_sprite)
 
@@ -429,22 +463,27 @@ class ComponentExitPortal:
 
         if self.found_lamp:
 
-            globals.PLAYER.state = 'STATUS WIN'
+            globals.PLAYER.state = "STATUS WIN"
             globals.SURFACE_MAIN.fill(constants.COLOR_BLACK)
             win_text = {
-                'display_surface': globals.SURFACE_MAIN,
-                'text_to_display': 'YOU WON!',
-                'font': constants.FONT_TITLE_SCREEN,
-                'coordinates': (constants.CAMERA_WIDTH / 2, constants.CAMERA_HEIGHT / 2),
-                'text_color': constants.COLOR_WHITE,
-                'alignment': 'center',
+                "display_surface": globals.SURFACE_MAIN,
+                "text_to_display": "YOU WON!",
+                "font": constants.FONT_TITLE_SCREEN,
+                "coordinates": (
+                    constants.CAMERA_WIDTH / 2,
+                    constants.CAMERA_HEIGHT / 2,
+                ),
+                "text_color": constants.COLOR_WHITE,
+                "alignment": "center",
             }
             draw.text(**win_text)
 
-            filename = f"{globals.PLAYER.display_name}-{date.today().strftime('%Y%m%d')}.txt"
-            with open(f'data/legacy/{filename}', 'a+') as legacy_file:
+            filename = (
+                f"{globals.PLAYER.display_name}-{date.today().strftime('%Y%m%d')}.txt"
+            )
+            with open(f"data/legacy/{filename}", "a+") as legacy_file:
                 for msg, _ in globals.GAME.message_history:
-                    legacy_file.write(f'{msg}\n')
+                    legacy_file.write(f"{msg}\n")
 
             milliseconds_passed = 0
             while milliseconds_passed <= 2000:

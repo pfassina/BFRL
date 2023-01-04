@@ -146,17 +146,11 @@ def map_surface(map_to_draw):
     display_map_height = constants.CAMERA_HEIGHT / constants.CELL_HEIGHT
 
     # Define Dimensions of the map to be drawn
-    render_width_min = int(camera_x - display_map_width / 2)
-    render_width_min = max(render_width_min, 0)
+    render_width_min = max(int(camera_x - display_map_width / 2), 0)
+    render_width_max = min(int(camera_x + display_map_width / 2), constants.MAP_WIDTH)
 
-    render_width_max = int(camera_x + display_map_width / 2)
-    render_width_max = min(render_width_max, constants.MAP_WIDTH)
-
-    render_height_min = int(camera_y - display_map_height / 2)
-    render_height_min = max(render_height_min, 0)
-
-    render_height_max = int(camera_y + display_map_height / 2)
-    render_height_max = min(render_height_max, constants.MAP_HEIGHT)
+    render_height_min = max(int(camera_y - display_map_height / 2), 0)
+    render_height_max = min(int(camera_y + display_map_height / 2), constants.MAP_HEIGHT)
 
     walls = globals.ASSETS.sprite('walls')
 
