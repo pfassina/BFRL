@@ -1,6 +1,0 @@
-PyYAML
-cffi==1.13.2
-numpy==1.18.1
-pycparser==2.19
-pygame==1.9.6
-tcod==11.6.0
