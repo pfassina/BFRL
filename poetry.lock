@@ -141,7 +141,7 @@ develop = false
 type = "git"
 url = "https://github.com/pygame/pygame.git"
 reference = "HEAD"
-resolved_reference = "dbbf78194670fc09ce6ede7a2e7d60d4ba44e2cc"
+resolved_reference = "c353bd74f2dfffac660837f0ebfb15390c319146"
 
 [[package]]
 name = "pyyaml"
