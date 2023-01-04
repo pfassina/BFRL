@@ -52,10 +52,20 @@ class TileType(Enum):
 
 class SpriteType(Enum):
     # characters
-    A_PLAYER = auto()
-    A_SNAKE_01 = auto()
-    A_SNAKE_02 = auto()
-    A_MOUSE_01 = auto()
+    A_WARRIOR = auto()
+    A_ROGUE = auto()
+    A_RANGER = auto()
+    A_MAGE = auto()
+    A_CLERIC = auto()
+    A_DRUID = auto()
+    A_BARBARIAN = auto()
+    A_SWORDSMAN = auto()
+    A_PALADIN = auto()
+    A_GOBLIN = auto()
+    A_GOBLIN_ARCHER = auto()
+    A_GOBLIN_WARRIOR = auto()
+    A_GOBLIN_NOBLE = auto()
+    A_GOBLIN_MAGE = auto()
 
     # items
     S_SWORD = auto()
@@ -63,12 +73,10 @@ class SpriteType(Enum):
     S_SCROLL_01 = auto()
     S_SCROLL_02 = auto()
     S_SCROLL_03 = auto()
-    S_FLESH_01 = auto()
-    S_FLESH_02 = auto()
 
     # Special
     S_STAIRS_UP = auto()
     S_STAIRS_DOWN = auto()
-    S_MAGIC_LAMP = auto()
-    S_PORTAL_OPEN = auto()
-    S_PORTAL_CLOSED = auto()
+    S_TREASURE = auto()
+    S_DOOR_OPEN = auto()
+    S_DOOR_CLOSED = auto()

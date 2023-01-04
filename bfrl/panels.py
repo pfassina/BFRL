@@ -64,3 +64,38 @@ def messages() -> None:
     )
 
     gg.SURFACE_MAIN.blit(panel_surface, panel_coord)
+
+
+def character() -> None:
+
+    assert gg.SURFACE_MAIN
+    assert gg.GAME
+
+    panel_size = Vector(120, 3)
+    panel_coord = Vector(10, constants.CAMERA_HEIGHT - 70)
+
+    panel_surface = Surface(panel_size)
+    panel_surface.fill(constants.COLOR_BLACK)
+
+    assert gg.GAME.active_actor.creature
+
+    name = gg.GAME.active_actor.name
+    health = f"Health: {gg.GAME.active_actor.creature.health}"
+
+    draw.text(
+        name,
+        panel_surface,
+        constants.FONT_MESSAGE_TEXT,
+        Vector(2, 0),
+        constants.COLOR_WHITE,
+        constants.COLOR_BLACK,
+    )
+    draw.text(
+        health,
+        panel_surface,
+        constants.FONT_MESSAGE_TEXT,
+        Vector(2, 16),
+        constants.COLOR_WHITE,
+        constants.COLOR_BLACK,
+    )
+    gg.SURFACE_MAIN.blit(panel_surface, panel_coord)

@@ -25,13 +25,12 @@ def tile_select(
 
     while True:
 
-        events = _get_player_input()
+        events = _handle_player_input()
 
-        if _quit_menu(events):
+        if pygame.K_ESCAPE in events:
             return []
 
         direction = _get_direction(events)
-
         cursor.move(direction)
 
         draw.map_surface()
@@ -46,11 +45,11 @@ def tile_select(
         gg.CLOCK.tick(GAME_FPS)
         pygame.display.flip()
 
-        if _confirm_selection(events):
+        if pygame.K_SPACE in events:
             return cursor.target
 
 
-def _get_player_input() -> list[int]:
+def _handle_player_input() -> list[int]:
     return [e.key for e in pygame.event.get() if e.type == pygame.KEYDOWN]
 
 
@@ -63,11 +62,3 @@ def _get_direction(events: list[int]) -> Optional[Direction]:
         return Direction.SOUTH
     if pygame.K_LEFT in events:
         return Direction.WEST
-
-
-def _quit_menu(events: list[int]) -> bool:
-    return pygame.K_ESCAPE in events
-
-
-def _confirm_selection(events: list[int]) -> bool:
-    return pygame.K_SPACE in events

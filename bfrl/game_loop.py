@@ -61,7 +61,11 @@ def handle_keys() -> game.PlayerAction:
             )
 
             attacked = gg.GAME.active_actor.creature.attack(target_tiles)
-            return game.PlayerAction.ATTACKED if attacked else game.PlayerAction.NONE
+            if not attacked:
+                return game.PlayerAction.NONE
+
+            gg.GAME.reset_turn()
+            return game.PlayerAction.ATTACKED
         # select cursor by pressing 'k'
         if event.key == pygame.K_k:
             menu.tile_select(gg.GAME.active_actor.coord)

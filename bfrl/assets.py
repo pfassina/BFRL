@@ -69,7 +69,7 @@ class SpriteSheet:
             image = Surface(sprite.size).convert()
 
             # copy image from sheet onto blank
-            offset = Vector(sprite.size.x * i, 0)
+            offset = Vector(0, sprite.size.y * i)
             sprite_location_on_sheet = sprite.rect.move(offset)
 
             image.blit(self.sprite_sheet, (0, 0), sprite_location_on_sheet)

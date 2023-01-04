@@ -56,11 +56,9 @@ class GameObject:
 
     def reset_turn(self) -> None:
 
-        assert self.active_actor.creature
-
         self.active_actor.end_movement()
 
-        delta = self.active_actor.creature.initiative
+        delta = self.active_actor.initiative
         for a in self.turn_order:
             a.delay(-1 * delta)
 

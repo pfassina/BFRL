@@ -1,0 +1,222 @@
+# sprite sheets
+sprite_sheets:
+  ss_player: 'data/graphics/reptiles.png'
+  ss_enemy: 'data/graphics/reptiles.png'
+  ss_weapon: 'data/graphics/weapon.png'
+  ss_shield: 'data/graphics/shield.png'
+  ss_items: 'data/graphics/scroll.png'
+  ss_flesh: 'data/graphics/flesh.png'
+  ss_tile: 'data/graphics/tile.png'
+  ss_wall: 'data/graphics/wall.png'
+  ss_light: 'data/graphics/light.png'
+  ss_door: 'data/graphics/door.png'
+  ss_target: 'data/graphics/target.png'
+
+# Tiles
+tiles:
+  - name: FLOOR
+    explored: true
+    sheet: ss_tile
+    size: [16, 16]
+    scale: [32, 32]
+    sprites:
+      0: [5, 2]
+  - name: FLOOR
+    explored: false
+    sheet: ss_tile
+    size: [16, 16]
+    scale: [32, 32]
+    sprites:
+      0: [3, 2]
+  - name: WALL
+    explored: true
+    sheet: ss_wall
+    size: [16, 16]
+    scale: [32, 32]
+    sprites:
+      0: [1, 4] # pillar
+      1: [0, 4] # north only
+      2: [1, 3] # east only
+      3: [0, 5] # north + east
+      4: [0, 4] # south only
+      5: [0, 4] # north + south
+      6: [0, 3] # south + east
+      7: [3, 4] # south + east + north
+      8: [1, 3] # west only
+      9: [2, 5] # west + north
+      10: [1, 3] # west + east
+      11: [4, 5] # west + north + east
+      12: [2, 3] # west + south
+      13: [5, 4] # west + north + south
+      14: [4, 3] # west + south + east
+      15: [4, 4] # west + south + east + north
+      998: [3, 3] # all 8 coordinates
+  - name: WALL
+    explored: false
+    sheet: ss_wall
+    size: [16, 16]
+    scale: [32, 32]
+    sprites:
+      0: [1, 7]
+      1: [0, 7]
+      2: [1, 6]
+      3: [0, 8]
+      4: [0, 7]
+      5: [0, 7]
+      6: [0, 6]
+      7: [3, 7]
+      8: [1, 6]
+      9: [2, 8]
+      10: [1, 6]
+      11: [4, 8]
+      12: [2, 6]
+      13: [5, 7]
+      14: [4, 6]
+      15: [4, 7]
+      998: [3, 6]
+  - name: TARGET
+    explored: true
+    sheet: ss_target
+    size: [16, 16]
+    scale: [32, 32]
+    sprites:
+      0: [1, 1] # pillar
+      1: [4, 2] # north only
+      2: [3, 1] # east only
+      3: [0, 2] # north + east
+      4: [4, 0] # south only
+      5: [3, 0] # north + south
+      6: [0, 0] # south + east
+      7: [0, 1] # south + east + north
+      8: [5, 1] # west only
+      9: [2, 2] # west + north
+      10: [5, 0] # west + east
+      11: [1, 2] # west + north + east
+      12: [2, 0] # west + south
+      13: [2, 1] # west + north + south
+      14: [1, 0] # west + south + east
+      15: [4, 1] # west + south + east + north
+      998: [4, 1] # all 8 coordinates
+
+
+# Character Sprites
+characters:
+  A_PLAYER:
+    sheet: ss_player
+    coord: [13, 5]
+    size: [16, 16]
+    num_sprites: 2
+    scale: [32, 32]
+  A_SNAKE_01:
+    sheet: ss_enemy
+    coord: [5, 5]
+    size: [16, 16]
+    num_sprites: 2
+    scale: [32, 32]
+  A_SNAKE_02:
+    sheet: ss_enemy
+    coord: [11, 5]
+    size: [16, 16]
+    num_sprites: 2
+    scale: [32, 32]
+  A_MOUSE_01:
+    sheet: ss_enemy
+    coord: [7, 11]
+    size: [16, 16]
+    num_sprites : 2
+    scale: [32, 32]
+
+# Items
+items:
+  S_SWORD:
+    sheet: ss_weapon
+    coord: [3, 0]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_SHIELD:
+    sheet: ss_shield
+    coord: [5, 0]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_SCROLL_01:
+    sheet: ss_items
+    coord: [4, 0]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_SCROLL_02:
+    sheet: ss_items
+    coord: [2, 1]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_SCROLL_03:
+    sheet: ss_items
+    coord: [3, 5]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_FLESH_01:
+    sheet: ss_flesh
+    coord: [1, 3]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_FLESH_02:
+    sheet: ss_flesh
+    coord: [3, 0]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+
+# Special
+specials:
+  S_STAIRS_UP:
+    sheet: ss_tile
+    coord: [4, 3]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_STAIRS_DOWN:
+    sheet: ss_tile
+    coord: [6, 3]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_MAGIC_LAMP:
+    sheet: ss_light
+    coord: [5, 0]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_PORTAL_OPEN:
+    sheet: ss_door
+    coord: [5, 5]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+  S_PORTAL_CLOSED:
+    sheet: ss_door
+    coord: [4, 5]
+    size: [16, 16]
+    num_sprites: 1
+    scale: [32, 32]
+
+# Background Images
+images:
+  main_menu_bg:
+    path: 'data/graphics/menu_bg.jpg'
+    scale:
+
+# Music & Sound
+music:
+  main_menu: 'data/audio/main_music.mp3'
+
+sounds:
+  hit:
+    - 'data/audio/hit_01.wav'
+    - 'data/audio/hit_02.wav'
+    - 'data/audio/hit_03.wav'
+    - 'data/audio/hit_04.wav'

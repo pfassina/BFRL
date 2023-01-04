@@ -44,6 +44,8 @@ def game() -> None:
     if gg.GAME.messages_panel and gg.GAME.message_count:
         panels.messages()
 
+    panels.character()
+
 
 def map_surface():
     assert gg.GAME
