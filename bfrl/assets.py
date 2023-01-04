@@ -1,78 +1,83 @@
 # modules
+from dataclasses import dataclass
+
 import pygame
 import yaml
+from pygame import Rect, Surface
+from pygame.mixer import Sound
 
-# game files
 from bfrl import constants
-from bfrl import globals
+from bfrl.structs import SpriteType, TileType, Vector
+
+
+@dataclass
+class TileSprite:
+    type: TileType
+    explored: bool
+    facing: int
+    coord: Vector
+    size: Vector
+    scale: tuple[int, int]
+
+    @property
+    def top_left(self) -> Vector:
+        return self.coord.elementwise() * self.size
+
+    @property
+    def rect(self) -> Rect:
+        return Rect(self.top_left, self.size)
+
+
+@dataclass
+class Sprite:
+    name: SpriteType
+    coord: Vector
+    size: Vector
+    num_sprites: int
+    scale: tuple[int, int]
+
+    @property
+    def top_left(self) -> Vector:
+        return self.coord.elementwise() * self.size
+
+    @property
+    def rect(self) -> Rect:
+        return Rect(self.top_left, self.size)
 
 
 class SpriteSheet:
-    """
-    Class used to grab images out of a sprite sheet. As a class, it allows you to access and subdivide portions of the
-    sprite_sheet.
+    def __init__(self, file_name: str) -> None:
 
-    ** PROPERTIES **
-    ObjectSpriteSheet.sprite_sheet : The loaded sprite sheet accessed through the file_name argument.
-    """
-
-    def __init__(self, file_name):
-        """
-        :param file_name: String which contains the directory/filename of the image for use as a sprites sheet.
-        """
         # load sprite sheet
         self.sprite_sheet = pygame.image.load(file_name).convert()
 
-    def get_image(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, scale=None):
-        """
-        returns a list containing a single image from a sprite sheet given a grid location.
-        :param column: Letter which gets converted into an integer
-        :param row: integer
-        :param width: integer, individual image width in pixels
-        :param height: integer, individual sprite height in pixels
-        :param scale: Tuple (width, height).  If included, scales the images to a new size
-        :return: list of sprites to be animated
-        """
+    def get_tile(self, tile: TileSprite) -> Surface:
 
-        image = pygame.Surface([width, height]).convert()
-        image.blit(self.sprite_sheet, (0, 0), (column * width, row * height, width, height))
+        image = Surface(tile.size).convert()
+        image.blit(self.sprite_sheet, (0, 0), tile.rect)
         image.set_colorkey(constants.COLOR_BLACK)
-
-        if scale:
-            (new_width, new_height) = scale
-            image = pygame.transform.scale(image, (new_width, new_height))
+        image = pygame.transform.scale(image, tile.scale)
 
         return image
 
-    def get_animation(self, column, row, width=constants.CELL_WIDTH, height=constants.CELL_HEIGHT, num_sprites=1,
-                      scale=None):
-        """
-        returns a list containing a sequence of images starting from a grid location.
-        :param column: Letter which gets converted into an integer
-        :param row: integer
-        :param width: integer, individual image width in pixels
-        :param height: integer, individual sprite height in pixels
-        :param num_sprites: number of sprites on an animation
-        :param scale: Tuple (width, height).  If included, scales the images to a new size
-        :return: list of sprites to be animated
-        """
+    def get_sprite(self, sprite: Sprite) -> list[Surface]:
 
         sprite_list = []
-        for i in range(num_sprites):
+        for i in range(sprite.num_sprites):
 
             # create blank image
-            image = pygame.Surface([width, height]).convert()
+            image = Surface(sprite.size).convert()
 
             # copy image from sheet onto blank
-            sprite_location_on_sheet = (column * width + width * i, row * height, width, height)
+            offset = Vector(sprite.size.x * i, 0)
+            sprite_location_on_sheet = sprite.rect.move(offset)
+
             image.blit(self.sprite_sheet, (0, 0), sprite_location_on_sheet)
 
             # set transparency key to black
             image.set_colorkey(constants.COLOR_BLACK)
 
-            if scale:
-                (new_width, new_height) = scale
-                image = pygame.transform.scale(image, (new_width, new_height))
+            image = pygame.transform.scale(image, sprite.scale)
 
             sprite_list.append(image)
 
@@ -80,122 +85,92 @@ class SpriteSheet:
 
 
 class Assets:
-    """
-    This class is a structure that holds all assets used in the game. This includes sprites, sound effects, and music.
-    """
+
+    _sheets: dict[str, SpriteSheet]
+    _tiles: dict[tuple[TileType, bool, int], Surface]
+    _sprites: dict[SpriteType, list[Surface]]
+    _images: dict[str, Surface]
+    _music: dict[str, Sound]
+    _sounds: dict[str, list[Sound]]
 
     def __init__(self):
 
-        with open('data/assets.yaml', 'r') as assets_file:
-            self.game_assets = yaml.full_load(assets_file)
+        with open("data/assets.yaml", "r") as assets_file:
+            self._game_assets = yaml.full_load(assets_file)
 
-        self.sound_list = []
-        self.sound_hit_list = []
+        self._load_assets()
 
-        self.load_assets()
-        self.sprite_dictionary = {}
-        self.generate_sprite_dictionary()
+    def tile(self, name: TileType, explored: bool, facing: int) -> Surface:
+        return self._tiles[(name, explored, facing)]
 
-        self.sound_adjust()
+    def sprite(self, name: SpriteType) -> list[Surface]:
+        return self._sprites[name]
 
-    def load_assets(self):
+    @property
+    def sound_list(self) -> list[Sound]:
+        music_list = list(self._music.values())
+        sound_list = [s for sl in self._sounds.values() for s in sl]
+        return music_list + sound_list
 
-        # load sheets
-        sheets = self.game_assets.get('sprite_sheets')
-        for name, path in sheets.items():
-            self.__setattr__(name, SpriteSheet(path))
+    def _load_assets(self):
 
-        # load walls
-        wall_assets = self.game_assets.get('walls')
-        walls_tiles = self.load_wall_tiles(wall_assets)
-        self.__setattr__('walls', walls_tiles)
+        self._sheets = self._load_sheets()
+        self._tiles = self._load_tiles()
+        self._sprites = self._load_sprites()
 
-        # load sprites
-        self.load_sprites('tiles', animation=False)
-        self.load_sprites('characters')
-        self.load_sprites('items')
-        self.load_sprites('specials')
+        self._images = self._load_images()
+        self._music = self._load_music()
+        self._sounds = self.__load_sounds()
 
-        # load background images
-        bg_images = self.game_assets.get('bg_images')
-        for bg_image, attributes in bg_images.items():
-            image = pygame.image.load(attributes['image'])
-            scale = (constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT)
-            image_scaled = pygame.transform.scale(image, scale)
-            self.__setattr__(bg_image, image_scaled)
+    def _load_sheets(self) -> dict[str, SpriteSheet]:
+        sheets: dict[str, str] = self._game_assets.get("sprite_sheets")
+        return {name: SpriteSheet(path) for name, path in sheets.items()}
 
-        # load music
-        music = self.game_assets.get('music')
-        for song, path in music.items():
-            self.__setattr__(song, path)
+    def _load_tiles(self) -> dict[tuple[TileType, bool, int], Surface]:
+        tiles = {}
+        for attributes in self._game_assets["tiles"]:
+            sheet: SpriteSheet = self._sheets[attributes["sheet"]]
+            name: TileType = TileType[attributes["name"]]
+            exp: bool = attributes["explored"]
+            size: Vector = Vector(*attributes["size"])
+            scale: tuple[int, int] = tuple(attributes["scale"])
+            sprites: dict[int, list[int]] = attributes["sprites"]
+            for facing, (col, row) in sprites.items():
+                tile = TileSprite(name, exp, facing, Vector(col, row), size, scale)
+                tiles[(name, exp, facing)] = sheet.get_tile(tile)
+        return tiles
 
-        # load sounds
-        sounds = self.game_assets.get('sounds')
-        for sound, attributes in sounds.items():
-            sound_type = attributes.get('type')
-            sound_path = attributes.get('path')
-            self.__setattr__(sound, self.sound_add(sound_path))
-            if sound_type == 'hit':
-                self.sound_hit_list.append(self.__getattribute__(sound))
+    def _load_sprites(self) -> dict[SpriteType, list[Surface]]:
+        sprites = {}
+        for category in ["characters", "items", "specials"]:
+            for sprite_type, attributes in self._game_assets[category].items():
+                name: SpriteType = SpriteType[sprite_type]
+                sheet: SpriteSheet = self._sheets[attributes["sheet"]]
+                coord: Vector = Vector(*attributes["coord"])
+                size: Vector = Vector(*attributes["size"])
+                num: int = attributes["num_sprites"]
+                scale: tuple[int, int] = tuple(attributes["scale"])
+                sprite = Sprite(name, coord, size, num, scale)
+                sprites[name] = sheet.get_sprite(sprite)
+        return sprites
 
-    def load_wall_tiles(self, wall_assets):
+    def _load_images(self) -> dict[str, Surface]:
+        images = self._game_assets["images"]
+        return {k: self._scale_image(v["path"]) for k, v in images.items()}
 
-        # Create Wall Dictionary using bitwise localization for each wall face
-        wall_tiles = {}
-        for wall_type, attributes in wall_assets.items():
-            wall_tiles[wall_type] = {}
-            sprite_sheet = self.__getattribute__(attributes.get('sheet'))
-            wall_width = attributes.get('width')
-            wall_height = attributes.get('height')
-            wall_scale = attributes.get('scale')
+    def _load_music(self) -> dict[str, Sound]:
+        music = self._game_assets["music"]
+        return {k: self._load_sound(v) for k, v in music.items()}
 
-            sprites = attributes.get('sprites')
-            for facing, coordinates in sprites.items():
-                tile_attributes = {
-                    'column': coordinates[0],
-                    'row': coordinates[1],
-                    'width': wall_width,
-                    'height': wall_height,
-                    'scale': wall_scale,
-                }
-                wall_tiles[wall_type][facing] = sprite_sheet.get_image(**tile_attributes)
+    def __load_sounds(self) -> dict[str, list[Sound]]:
+        sounds = self._game_assets.get("sounds")
+        return {t: [self._load_sound(s) for s in l] for t, l in sounds.items()}
 
-        return wall_tiles
+    @staticmethod
+    def _scale_image(path) -> Surface:
+        image = pygame.image.load(path)
+        return pygame.transform.scale(image, constants.CAMERA_SIZE)
 
-    def load_sprites(self, name, animation=True):
-        asset_type = self.game_assets.get(name)
-        for asset, attributes in asset_type.items():
-            sprite_sheet = self.__getattribute__(attributes.pop('sheet'))
-            if animation:
-                self.__setattr__(asset, sprite_sheet.get_animation(**attributes))
-            else:
-                self.__setattr__(asset, sprite_sheet.get_image(**attributes))
-
-    def generate_sprite_dictionary(self):
-
-        sprite_dict = {}
-        for category, assets in self.game_assets.items():
-            if category != 'walls':
-                for asset, attributes in assets.items():
-                    sprite_dict[asset] = self.__getattribute__(asset)
-            else:
-                sprite_dict['walls'] = {'default': 0, 'explored': 0}
-                sprite_dict['walls']['default'] = self.__getattribute__('walls')['default']
-                sprite_dict['walls']['explored'] = self.__getattribute__('walls')['explored']
-
-        self.sprite_dictionary = sprite_dict
-
-    def sprite(self, key):
-        return self.sprite_dictionary[key]
-
-    def sound_add(self, file):
-        new_sound = pygame.mixer.Sound(file)
-        self.sound_list.append(new_sound)
-        return new_sound
-
-    def sound_adjust(self):
-
-        for sound in self.sound_list:
-            sound.set_volume(globals.PREFERENCES.volume_sound)
-
-        pygame.mixer.music.set_volume(globals.PREFERENCES.volume_music)
+    @staticmethod
+    def _load_sound(path) -> Sound:
+        return Sound(path)

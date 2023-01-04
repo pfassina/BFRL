@@ -1,51 +1,36 @@
-# modules
-import random
 import pygame
-import tcod
+import yaml
 
-# game files
-from bfrl import constants
-from bfrl import game
-from bfrl import globals
-from bfrl import data
-from bfrl import camera
-from bfrl import assets
+from bfrl import assets, constants, game
+from bfrl import game_globals as gg
+from bfrl import generator, maps
 
 
-def init():
+def init() -> None:
 
-    # initialize pygame
     pygame.init()
+    pygame.display.set_caption("BattleFortune Roguelike")
     pygame.key.set_repeat(200, 70)
-    globals.init()
 
-    tcod.namegen_parse('data/name_generator/celtic.cfg')
+    gg.init()
 
-    # PREFERENCES tracks user preferences
-    try:
-        game.preferences_load()
-    except FileNotFoundError:
-        globals.PREFERENCES = data.Preferences()
+    gg.SURFACE_MAIN = pygame.display.set_mode(constants.CAMERA_SIZE)
+    gg.SURFACE_MAP = pygame.Surface(constants.MAP_SIZE_PX)
+    gg.ASSETS = assets.Assets()
+    gg.CLOCK = pygame.time.Clock()
 
-    # create display surface with a given Height, and Width
-    globals.SURFACE_MAIN = pygame.display.set_mode((constants.CAMERA_WIDTH, constants.CAMERA_HEIGHT))
 
-    globals.SURFACE_MAP = pygame.Surface((
-        constants.MAP_WIDTH * constants.CELL_WIDTH,
-        constants.MAP_HEIGHT * constants.CELL_HEIGHT
-    ))
+def new() -> None:
 
-    # CAMERA tracks what is shown on the display
-    globals.CAMERA = camera.ObjectCamera()
+    state = game.GameState.PLAYER
 
-    # ASSETS stores the game assets
-    globals.ASSETS = assets.Assets()
+    with open("data/scenario.yaml", "r") as file:
+        data = yaml.full_load(file)
 
-    # CLOCK tracks and limits CPU cycles
-    globals.CLOCK = pygame.time.Clock()
+    scenario = game.Scenario(data["map"], data["actors"])
 
-    # RANDOM NUMBER ENGINE
-    globals.RANDOM_ENGINE = random.SystemRandom()
+    current_map = maps.GameMap(scenario.size, scenario.tiles)
+    gg.GAME = game.GameObject(current_map, state)
+    generator.creatures(scenario.actors)
 
-    # When FOV is true, FOV recalculates
-    globals.FOV_CALCULATE = True
+    gg.GAME.reset_turn()
